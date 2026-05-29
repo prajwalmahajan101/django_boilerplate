@@ -4,14 +4,28 @@ Django boilerplate uses :class:`BaseService` for the standard
 write paths (validation, audit-stamping, soft-delete cascade, hooks).
 This module adds a thin sync repository surface that mirrors the
 FastAPI sibling's vocabulary (``get_by_id``, ``add``, ``add_all``,
-``bulk_update_by_filter``, ``delete_hard``, etc.) so cross-repo
-developers see the same verbs.
+``delete_hard``, etc.) so cross-repo developers see the same verbs.
 
-**Not a replacement** for ``BaseService``. Use this only when a
-test or domain class wants ORM access through a thin abstraction
-(easier to mock than the manager directly, easier to swap out in
-isolation). Production write paths should keep using
-``BaseService``.
+**Not a replacement for ``BaseService``.** The repository skips
+behaviour that ``BaseService`` guarantees:
+
+* ``full_clean()`` model validation (run automatically by
+  :meth:`BaseModel.save` on the service path).
+* ``created_by`` / ``updated_by`` audit-field stamping.
+* ``pre_*`` / ``post_*`` hook execution.
+* Soft-delete cascade BFS.
+
+Use this only when a test or domain class wants ORM access through
+a thin abstraction (easier to mock than the manager directly,
+easier to swap out in isolation). Production write paths should
+keep using ``BaseService``.
+
+Bulk-update SQL (``Manager.filter(...).update(...)``) is **not
+exposed here on purpose** — it bypasses ``auto_now``,
+``updated_by``, validators, and signals, and is the most common
+audit-trail regression. Reach through ``cls._manager()`` explicitly
+at the call site if you genuinely need that escape hatch, so
+reviewers see the bypass.
 """
 
 from __future__ import annotations
@@ -108,15 +122,6 @@ class BaseRepository(Generic[ModelType]):
             setattr(instance, key, value)
         instance.save()
         return instance
-
-    @classmethod
-    @transaction.atomic
-    def bulk_update_by_filter(
-        cls,
-        filters: dict[str, Any],
-        data: dict[str, Any],
-    ) -> int:
-        return cls._manager().filter(**filters).update(**data)
 
     @classmethod
     @transaction.atomic
