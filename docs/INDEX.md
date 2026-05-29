@@ -8,6 +8,8 @@ you productive fastest.
 
 - **[architecture.md](architecture.md)** — system overview, layering
   (Views → Services → ORM), encryption, async stack.
+- **[class-diagrams.md](class-diagrams.md)** — base hierarchy,
+  resilience layering, auth provider chain (Mermaid).
 - **[thread-safety.md](thread-safety.md)** — contract for any
   module-level mutable state under gthread Gunicorn + Celery threads.
 - **[scalability.md](scalability.md)** — Gunicorn worker × thread
@@ -19,6 +21,8 @@ you productive fastest.
 - **[data-model.md](data-model.md)** — `BaseModel`, `NamedBaseModel`,
   `BaseService[T]`, the `Meta(BaseModel.Meta)` inheritance contract,
   validation contract, page-size cap, verb hierarchy.
+- **[erd.md](erd.md)** — entity-relationship diagram for `User`,
+  `Role`, `Permission`, `APIKey`, `ApiLog` (Mermaid).
 - **[audit-trail.md](audit-trail.md)** — `created_by` / `updated_by`
   propagation, soft-delete cascade walk, `_cascade_soft_delete_bfs`.
 
