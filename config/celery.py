@@ -2,12 +2,20 @@ import os
 import sys
 from pathlib import Path
 
-# --- apps/ on sys.path (ISSUE-011) ------------------------------------------
-# This block is duplicated verbatim in config/settings/__init__.py. It cannot
-# be extracted to a shared helper because config/__init__.py imports celery
-# (this module), so any `from config._x import …` here would re-enter
-# config/__init__.py → circular import. Keep both copies identical; if you
-# change this block, change the sibling at config/settings/__init__.py too.
+# --- apps/ on sys.path (Decision Record: kept duplicated by design) ---------
+# This block is duplicated verbatim in config/settings/__init__.py.
+#
+# Why duplicated: config/__init__.py imports this celery module, so any
+# `from config._something import _apps_dir` here would re-enter
+# config/__init__.py and trip a circular import at boot. There is no
+# shared-helper path that avoids re-entering config/__init__.py.
+#
+# Why safe: the drift guard at config/settings/__init__.py:22-29 recomputes
+# what *this* file would resolve to (via parents[2]) and refuses to start
+# if the two siblings disagree — so the only realistic failure mode of the
+# duplication (someone edits one copy without the other) is caught at boot,
+# not at runtime. If you change this block, change the sibling and re-run
+# `DJANGO_ENV=test python manage.py runserver` to confirm the guard passes.
 _apps_dir = str(Path(__file__).resolve().parent.parent / "apps")
 if _apps_dir not in sys.path:
     sys.path.insert(0, _apps_dir)

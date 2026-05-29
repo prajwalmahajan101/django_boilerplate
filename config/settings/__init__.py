@@ -6,12 +6,18 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# --- apps/ on sys.path (ISSUE-011) ------------------------------------------
-# This block is duplicated verbatim in config/celery.py. It cannot be
-# extracted to a shared helper because config/__init__.py imports celery,
-# so any `from config._x import …` here would re-enter config/__init__.py
-# → circular import. Keep both copies identical; if you change this block,
-# change the sibling at config/celery.py too.
+# --- apps/ on sys.path (Decision Record: kept duplicated by design) ---------
+# This block is duplicated verbatim in config/celery.py.
+#
+# Why duplicated: config/__init__.py imports celery, so any
+# `from config._something import _apps_dir` from celery.py would re-enter
+# config/__init__.py and trip a circular import at boot. There is no
+# shared-helper path that avoids re-entering config/__init__.py.
+#
+# Why safe: the drift guard immediately below recomputes what config/celery.py
+# would resolve to (via parents[2]) and refuses to start if the two siblings
+# disagree — so the only realistic failure mode of the duplication (someone
+# edits one copy without the other) is caught at boot, not at runtime.
 _apps_dir = str(Path(__file__).resolve().parent.parent.parent / "apps")
 if _apps_dir not in _sys.path:
     _sys.path.insert(0, _apps_dir)

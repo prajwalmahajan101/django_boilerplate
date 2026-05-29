@@ -23,11 +23,9 @@ from core.resilience.throttles.base import (
     get_user_tier,
     log_throttle_event,
 )
+from core.resilience.throttles import global_lua
 from core.resilience.throttles.cache_adapter import DjangoCacheAdapter
-from core.resilience.throttles.lua_scripts import (
-    GLOBAL_THROTTLE_LUA_SCRIPT,
-    THROTTLE_LUA_SCRIPT,
-)
+from core.resilience.throttles.lua_scripts import THROTTLE_LUA_SCRIPT
 from core.utils.log_sanitization import safe_log_dict
 from core.utils.valkey import get_valkey_client
 
@@ -265,39 +263,22 @@ class BurstThrottle(ValkeyRateThrottle):
 
 
 class GlobalThrottle(ValkeyRateThrottle):
-    """Global API rate limiting using O(1) sliding window counter."""
+    """Global API rate limiting using O(1) sliding window counter.
+
+    The Lua-script SHA cache + load helper for this throttle's atomic
+    path lives in ``core.resilience.throttles.global_lua`` — it's
+    process-wide state with its own algorithm and was extracted so the
+    throttle classes here only contain throttle logic.
+    """
 
     scope = "global"
-    _global_lua_sha: str | None = None
-    _global_lua_lock = Lock()
 
     def get_rate(self) -> str:
         return django_settings.RATE_LIMIT_CONFIG.get("GLOBAL_RATE", "10000/minute")
 
     def __init__(self) -> None:
         super().__init__()
-        self._init_global_lua_script()
-
-    def _init_global_lua_script(self) -> None:
-        if GlobalThrottle._global_lua_sha is not None:
-            return
-
-        with GlobalThrottle._global_lua_lock:
-            if GlobalThrottle._global_lua_sha is not None:
-                return
-
-            try:
-                client = self._get_valkey_client()
-                GlobalThrottle._global_lua_sha = client.script_load(
-                    GLOBAL_THROTTLE_LUA_SCRIPT
-                )
-            except Exception as e:
-                logger.warning(
-                    "Failed to load global throttle Lua script: %s. "
-                    "Falling back to non-atomic implementation.",
-                    str(e),
-                )
-                GlobalThrottle._global_lua_sha = None
+        global_lua.ensure_loaded(self._get_valkey_client)
 
     def get_cache_key(self, request: HttpRequest, view: APIView) -> str:
         return self.cache_format % {"scope": self.scope, "ident": "global"}
@@ -313,7 +294,7 @@ class GlobalThrottle(ValkeyRateThrottle):
 
             self.now = self.timer()
 
-            if GlobalThrottle._global_lua_sha:
+            if global_lua.get_sha():
                 return self._allow_request_global_atomic(request, view)
             return self._allow_request_global_fallback(request, view)
 
@@ -328,10 +309,11 @@ class GlobalThrottle(ValkeyRateThrottle):
 
     def _allow_request_global_atomic(self, request: HttpRequest, view: APIView) -> bool:
         client = self._get_valkey_client()
+        sha = global_lua.get_sha()
 
         try:
             result = client.evalsha(
-                GlobalThrottle._global_lua_sha,
+                sha,
                 1,
                 self.key,
                 self.num_requests,
@@ -339,12 +321,12 @@ class GlobalThrottle(ValkeyRateThrottle):
                 self.now,
             )
         except Exception:
-            with GlobalThrottle._global_lua_lock:
-                GlobalThrottle._global_lua_sha = None
-            self._init_global_lua_script()
-            if GlobalThrottle._global_lua_sha:
+            # NOSCRIPT-style failure: drop the cached SHA and re-load.
+            global_lua.reset()
+            sha = global_lua.ensure_loaded(self._get_valkey_client)
+            if sha:
                 result = client.evalsha(
-                    GlobalThrottle._global_lua_sha,
+                    sha,
                     1,
                     self.key,
                     self.num_requests,

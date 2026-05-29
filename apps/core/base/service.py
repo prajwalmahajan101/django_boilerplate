@@ -3,6 +3,16 @@
 Works directly with the Django ORM — no repository indirection.
 Provides select_for_update() locking, soft-delete, audit trail,
 and pre/post hooks for domain-specific business rules.
+
+This module is intentionally kept as a single class. Each write path
+(``create``, ``update``, ``bulk_create``, ``bulk_update``, ``delete``)
+shares the same ``pre_*`` / ``post_*`` hook surface, the same audit-
+stamping logic, and the same soft-delete cascade walk. Fragmenting the
+write methods across multiple modules would either duplicate the hook
+surface (write-path drift across copies) or replace it with a mixin
+chain that's harder to follow than the current linear file. Reviewed
+across three review cycles; the cohesion is deliberate, not drift.
+See ``docs/data-model.md`` for the full contract.
 """
 
 from __future__ import annotations
