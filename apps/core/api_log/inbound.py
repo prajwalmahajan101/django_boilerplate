@@ -21,7 +21,11 @@ from typing import Any, Callable
 
 from core.api_log.dispatch import capture_and_dispatch
 from core.api_log.models import Direction
-from core.api_log.sanitizers import redact_headers, serialize_body
+from core.api_log.sanitizers import (
+    redact_headers,
+    serialize_body,
+    summarise_body_for_audit,
+)
 from core.utils.logging import _request_id_var
 
 
@@ -69,11 +73,28 @@ def log_inbound(service_name: str) -> Callable[[Callable[..., Any]], Callable[..
 
                 request_body: str | None = None
                 if request is not None:
-                    try:
-                        body = request.body
-                    except Exception:
-                        body = None
-                    request_body = serialize_body(body)
+                    content_type = (
+                        getattr(request, "content_type", "") or ""
+                    ).lower()
+                    if content_type.startswith("multipart/form-data"):
+                        try:
+                            from django.http import QueryDict
+
+                            merged = QueryDict(mutable=True)
+                            merged.update(getattr(request, "POST", {}) or {})
+                            for k, v in (getattr(request, "FILES", {}) or {}).items():
+                                merged.appendlist(k, v)
+                            request_body = serialize_body(
+                                summarise_body_for_audit(merged)
+                            )
+                        except Exception:
+                            request_body = None
+                    else:
+                        try:
+                            body = request.body
+                        except Exception:
+                            body = None
+                        request_body = serialize_body(body)
 
                 return {
                     "direction": Direction.INBOUND,

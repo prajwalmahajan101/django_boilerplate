@@ -67,6 +67,82 @@ def audit_safe(value: Any) -> Any:
     return value
 
 
+def summarise_body_for_audit(value: Any) -> Any:
+    """Return a JSON-safe representation of a request/response body.
+
+    Multipart payloads (Django ``QueryDict`` carrying uploaded files,
+    raw multipart encoder objects) and raw ``bytes`` are not
+    JSON-serialisable, so passing them through verbatim would let the
+    api_log row drop silently when the persistence backend tries to
+    encode the JSONB column. This helper renders such payloads as a
+    structured summary (field names, filenames, content types, byte
+    sizes) and falls back to :func:`audit_safe` for everything else.
+    """
+    if value is None:
+        return None
+    try:
+        from django.http import QueryDict
+        from django.core.files.uploadedfile import UploadedFile
+    except Exception:
+        QueryDict = None  # type: ignore[assignment]
+        UploadedFile = None  # type: ignore[assignment]
+
+    if QueryDict is not None and isinstance(value, QueryDict):
+        fields: list[dict[str, Any]] = []
+        for key in value.keys():
+            for item in value.getlist(key):
+                entry: dict[str, Any] = {"name": key}
+                if UploadedFile is not None and isinstance(item, UploadedFile):
+                    entry["filename"] = item.name
+                    if item.content_type:
+                        entry["content_type"] = item.content_type
+                    entry["size_bytes"] = item.size
+                elif isinstance(item, (bytes, bytearray)):
+                    entry["size_bytes"] = len(item)
+                elif isinstance(item, str):
+                    entry["value"] = item if len(item) <= 200 else item[:200] + "…"
+                else:
+                    entry["value"] = str(item)
+                fields.append(entry)
+        return {"__multipart__": True, "fields": fields}
+
+    if hasattr(value, "_fields") and value.__class__.__name__ in {
+        "MultipartEncoder",
+        "FormData",
+    }:
+        try:
+            fields = []
+            for field in value._fields:  # type: ignore[attr-defined]
+                entry = {"name": getattr(field, "name", None) or str(field)}
+                fields.append(entry)
+            return {"__multipart__": True, "fields": fields}
+        except Exception:
+            pass
+
+    return audit_safe(value)
+
+
+def serialize_error_body(body: Any, max_len: int | None = None) -> str | None:
+    """Best-effort string-encode an upstream error body.
+
+    Falls back to ``str(body)`` if JSON-encoding fails so a malformed
+    upstream response never masks the real failure under a secondary
+    ``TypeError``. Output is truncated to honour the same body cap as
+    :func:`serialize_body`.
+    """
+    if body is None:
+        return None
+    if max_len is None:
+        max_len = int(getattr(settings, "API_LOG_MAX_BODY_LEN", 4096))
+    if isinstance(body, str):
+        return truncate(body, max_len)
+    try:
+        text = json.dumps(body, default=str)
+    except Exception:
+        text = str(body)
+    return truncate(text, max_len)
+
+
 def serialize_body(value: Any, max_len: int | None = None) -> str | None:
     """Render ``value`` as a string body of at most ``max_len`` chars.
 
@@ -104,5 +180,7 @@ __all__ = [
     "compute_ttl",
     "redact_headers",
     "serialize_body",
+    "serialize_error_body",
+    "summarise_body_for_audit",
     "truncate",
 ]
