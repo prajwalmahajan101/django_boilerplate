@@ -122,8 +122,9 @@ its parent must come first.
      `TransientError` for retryable signals).
    * Internal subsystem failure → subclass `InfrastructureError` directly.
    * Generic domain rule violation in a service → subclass
-     `BaseCustomError` and pass `status_code=4xx` per the
-     [`queries` convention](../apps/queries/CLAUDE.md#conventions).
+     `BaseCustomError` and pass `status_code=4xx`. Prefer promoting a
+     stable mapping to a typed subclass via
+     `register_exception_mapping()` once the rule recurs.
 
 2. Define the class with the docstring template:
 
@@ -231,14 +232,13 @@ and `handler.py:169` (`register_exception_mapping`).
   from service A, it should either re-raise the same typed exception or
   wrap it in a more specific one — never collapse to `Exception` or a
   Python built-in.
-* **Push pipeline catches `ExternalServiceError` only.**
-  `apps/partners/services/push.py` wraps `ExternalServiceError` (which
-  covers `PartnerAuthResponseError`, `S3Exception`, `SESException`,
-  `ExternalTimeoutError`, etc.) into `PartnerPushError(502)` so callers
-  get a single typed shape per push attempt. Config-shaped failures
-  (`PartnerAuthConfigError`, a `RepositoryError`) deliberately escape
-  unwrapped and surface as 500 — they signal a stored-data integrity
-  issue, not a transient external problem.
+* **Aggregate boundaries catch `ExternalServiceError` only.** A service
+  that calls multiple external systems should wrap `ExternalServiceError`
+  (which covers `S3Exception`, `SESException`, `ExternalTimeoutError`,
+  etc.) into a single typed 502 so callers get one shape per attempt.
+  Config-shaped failures (auth-config errors, `RepositoryError`) should
+  escape unwrapped and surface as 500 — they signal a stored-data
+  integrity issue, not a transient external problem.
 
 ## Anti-patterns
 
@@ -259,11 +259,10 @@ and `handler.py:169` (`register_exception_mapping`).
   raise a typed `BaseCustomError` subclass with `status_code=4xx`.
 * `raise BaseCustomError("…")` with no `status_code` and no subclass —
   defaults to 500, which is rarely what you want. Either add
-  `status_code=4xx` (sanctioned only in `apps/queries`; see
-  [`queries` convention](../apps/queries/CLAUDE.md#conventions)) or
-  define a typed subclass. Inline `status_code=` overrides outside
-  `apps/queries` should be promoted to a registered subclass — that's
-  what the SSRF guard's six 400s became (`InvalidOutboundURLError`).
+  `status_code=4xx` for an ad-hoc rule violation or define a typed
+  subclass. Recurring inline `status_code=` overrides should be promoted
+  to a registered subclass — that's what the SSRF guard's six 400s
+  became (`InvalidOutboundURLError`).
 * **Subclass `__init__` that drops `status_code`.** When overriding
   `__init__` on a `BaseCustomError` subclass, always accept and forward
   `*, status_code: int | None = None` to `super().__init__`. Dropping

@@ -169,7 +169,6 @@ class PartnerPushError(ExternalServiceError):
         (admin UI, retry workers) can branch on a typed exception.
     Maps to: HTTP 502 (inherits ``ExternalServiceError``).
     Error code: ``PARTNER_PUSH``.
-    Typical caller: ``apps/partners/services/push.py``.
     """
 
     default_message = "Failed to push lead to partner."

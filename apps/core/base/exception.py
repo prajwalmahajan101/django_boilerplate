@@ -41,8 +41,7 @@ class BaseCustomError(Exception):
     Status code mapping:
       * Default: HTTP 500.
       * Per-instance override: ``raise BaseCustomError("…", status_code=409)``
-        (used by service-layer code in ``apps/queries`` for domain rule
-        violations — see ``apps/queries/CLAUDE.md``).
+        for ad-hoc domain rule violations at the service layer.
       * Class-level mapping: ``register_exception_mapping(MyError, 4xx)``
         (preferred for stable, type-driven mappings — see ``handler.py``).
 

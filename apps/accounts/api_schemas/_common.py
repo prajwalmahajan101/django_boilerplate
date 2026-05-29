@@ -1,8 +1,7 @@
 """Shared response shapes used across the accounts api_schemas sub-modules.
 
 These private schema fragments are consumed by auth/user/api_key endpoints
-to keep error / throttle / auth-required envelope shapes consistent. Mirrors
-the ``apps/partners/api_schemas/_common.py`` precedent.
+to keep error / throttle / auth-required envelope shapes consistent.
 """
 
 from __future__ import annotations

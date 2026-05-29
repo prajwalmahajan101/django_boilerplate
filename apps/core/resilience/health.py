@@ -3,7 +3,7 @@
 Today every Valkey-backed subsystem (cache, circuit-breaker storage,
 throttle counters) has a binary in-memory flag for "degraded or not."
 That flag is enough for fail-open behaviour but loses an important
-distinction the colending_partner project encodes explicitly:
+distinction worth encoding explicitly:
 
 * DEGRADED — the backend was healthy and degraded mid-flight. Recovery
   is a flag flip; the backend object is still wired to a Valkey client.
@@ -16,8 +16,6 @@ The two states drive different recovery paths (see ``recovery.py``):
 ``DEGRADED`` recovers via in-call ``_try_recover()`` or background
 ``ValkeyRecoveryMonitor``; ``BOOT_FALLBACK`` recovers via
 ``reset_backend(alias)`` triggered from the readiness probe.
-
-Reference: ``colending_partner/src/core/resilience/cache/redis_impl.py``.
 """
 
 from __future__ import annotations

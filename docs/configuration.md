@@ -48,25 +48,23 @@ Production settings enforce at startup:
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `POSTGRES_DB` | No | `co_lending_gateway` | Database name |
+| `POSTGRES_DB` | No | `app` | Database name |
+| `CELERY_APP_NAME` | No | `app` | Celery application name (worker / queue identity) |
 | `POSTGRES_USER` | No | `postgres` | Database user |
 | `POSTGRES_PASSWORD` | No | `postgres` | Database password |
 | `POSTGRES_HOST` | No | `db` | Database host |
 | `POSTGRES_PORT` | No | `5432` | Database port |
 | `DB_CONN_MAX_AGE` | No | `600` | Connection max age (seconds) |
 
-### Database (Synoriq External)
+### External SQL sources (optional, via SQLAlchemy)
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `SYNORIQ_DB_HOST` | No | `localhost` | Synoriq DB host |
-| `SYNORIQ_DB_PORT` | No | `5432` | Synoriq DB port |
-| `SYNORIQ_DB_NAME` | No | `synoriq` | Synoriq DB name |
-| `SYNORIQ_DB_USER` | No | `postgres` | Synoriq DB user |
-| `SYNORIQ_DB_PASSWORD` | No | `postgres` | Synoriq DB password |
-| `SYNORIQ_DB_POOL_SIZE` | No | `5` | SQLAlchemy connection pool size |
-| `SYNORIQ_DB_MAX_OVERFLOW` | No | `10` | Max overflow connections |
-| `SYNORIQ_DB_POOL_RECYCLE` | No | `1800` | Connection recycle time (seconds) |
+`core/utils/db.py` is wired to read from any external Postgres source
+(legacy systems, analytics warehouses, partner-owned read replicas) via
+SQLAlchemy with engine caching, 5s connect timeout, and 30s statement
+timeout. Wire your own env-var prefixes (`<NAME>_DB_HOST`, `<NAME>_DB_PORT`,
+…) when you add such a source. Documented pattern in
+[development.md](development.md#external-sql-sources) and
+[scalability.md](scalability.md).
 
 ### Cache (Valkey)
 
@@ -140,14 +138,15 @@ If set to `*`, enables `CORS_ALLOW_ALL_ORIGINS=True` (blocked in production).
 
 #### Per-service breakers
 
-Registered in `apps/core/apps.py::CoreConfig._register_resilience_services`. Edit there to change thresholds — the table below is a lookup, not an env contract.
+Register breakers in `apps/core/apps.py::CoreConfig._register_resilience_services`. Two reference services are pre-wired in the boilerplate and serve as templates for domain code:
 
 | Service | `fail_max` | `reset_timeout` | Excluded exceptions | Notes |
 |---|---|---|---|---|
-| `synoriq` | 5 | 60 s | — | Every failure is infra; nothing excluded. |
-| `synofin` | 5 | 60 s | — | Mirrors `synoriq`. Matters under doc-heavy push fan-out (`DOCUMENT_MATERIALIZE_CONCURRENCY` × `MAX_PUSH_DOCUMENTS`). |
-| `partner_push` | 5 | 30 s | `PartnerPushError` (4xx) | 4xx-from-partner is our bug, not theirs — does not count. |
 | `s3` | 5 | 30 s | `S3NotFoundError` | 404 = absent object (cache miss), not S3 outage. |
+| `ses` | 5 | 60 s | — | Every failure is infra; nothing excluded. |
+
+Add a row when you register a new service — the table is the operator's
+lookup, the registration call is the source of truth.
 
 ### Logging
 
@@ -244,10 +243,11 @@ From highest to lowest priority:
 
 ### Affected columns
 
-Two columns hold ciphertext under this key today. A rotation must re-encrypt every row in both:
+One column holds ciphertext under this key today. A rotation must re-encrypt every row:
 
-- `Partner.auth_cred` — `apps/partners/models.py` (encrypted partner-API credentials).
 - `APIKey.encrypted_key` — `apps/accounts/models.py` (issued API keys; keys are also recoverable via re-issue if rotation goes wrong).
+
+Add additional `EncryptedCharField` columns to this list as new ones land.
 
 ### Procedure (downtime-based)
 

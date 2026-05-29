@@ -307,13 +307,14 @@ external_dependency_response = OpenApiResponse(
 )
 
 # 503 — the *project's own* service is temporarily unable to serve the
-# request because a hard dependency (PostgreSQL, Synoriq read replica, the
-# Valkey cache) is unreachable. Distinct from 502 in intent: 502 means a
-# downstream we orchestrate is broken; 503 means *we* are not ready.
+# request because a hard dependency (PostgreSQL, the Valkey cache, an
+# upstream identity provider) is unreachable. Distinct from 502 in intent:
+# 502 means a downstream we orchestrate is broken; 503 means *we* are not
+# ready.
 service_unavailable_response = OpenApiResponse(
     description=(
         "Service is temporarily unavailable — typically because a primary "
-        "datastore (PostgreSQL, Synoriq) is unreachable. Retry with backoff."
+        "datastore (PostgreSQL or the cache) is unreachable. Retry with backoff."
     ),
     response=error_envelope(
         message_example="Service temporarily unavailable.",

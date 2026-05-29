@@ -54,7 +54,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('is_active', models.BooleanField(db_index=True, default=True)),
                 ('notes', models.JSONField(blank=True, null=True)),
-                ('name', models.CharField(help_text="Label for this key, e.g. 'Synoriq Production'", max_length=255)),
+                ('name', models.CharField(help_text="Label for this key, e.g. 'CI Pipeline' or 'Mobile App Prod'", max_length=255)),
                 ('prefix', models.CharField(db_index=True, editable=False, help_text='First 8 chars of the key, used for lookup.', max_length=8, unique=True)),
                 ('encrypted_key', core.base.fields.EncryptedCharField(editable=False, help_text='Full key encrypted at rest via Fernet.', max_length=500)),
                 ('last_used_at', models.DateTimeField(blank=True, editable=False, null=True)),

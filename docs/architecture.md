@@ -2,7 +2,12 @@
 
 ## System Overview
 
-The Co-Lending Gateway is a domain-driven Django REST API that bridges internal loan management systems with external co-lending partners. It reads lead data from an external Synoriq database, manages partner configurations, and orchestrates lead pushes to partner APIs.
+A Django 6 + DRF service skeleton with vetted infrastructure: typed
+exception envelope, RBAC, JWT + API-key auth, cross-process resilience
+primitives (cache / circuit breaker / throttles backed by Valkey with
+fail-open fallbacks), structured JSON logging, and a Celery worker
+tier. Designed as a starting point — drop your domain apps in next to
+`apps/accounts/` and inherit the conventions.
 
 ```
                                  ┌─────────────┐
@@ -21,25 +26,25 @@ The Co-Lending Gateway is a domain-driven Django REST API that bridges internal 
                                         │
                                  ┌──────▼───────┐
                                  │   Gunicorn    │
-                                 │  (4 workers)  │
+                                 │  (gthread)    │
                                  └──────┬───────┘
                                         │
                     ┌───────────────────┼───────────────────┐
                     │                   │                   │
              ┌──────▼──────┐    ┌──────▼──────┐    ┌──────▼──────┐
-             │  Valkey 8   │    │  RabbitMQ   │    │ PostgreSQL  │
-             │ (2 caches:  │    │  3.13       │    │     16      │
-             │  default +  │    │ (3 queues:  │    │ (primary    │
-             │  rate_limit) │    │  high/def/  │    │  Django DB) │
-             └─────────────┘    │  low)       │    └─────────────┘
+             │  Valkey 8   │    │   Broker    │    │ PostgreSQL  │
+             │ (2 caches:  │    │ (Rabbit /   │    │     16      │
+             │  default +  │    │  Redis +    │    │ (primary    │
+             │  rate_limit) │    │  3 queues:  │    │  Django DB) │
+             └─────────────┘    │  high/def/  │    └─────────────┘
+                                │  low)       │
                                 └──────┬──────┘
                                        │
-                                ┌──────▼──────┐     ┌─────────────┐
-                                │   Celery     │     │  Synoriq    │
-                                │  Workers     │     │  PostgreSQL │
-                                │ + Beat       │     │ (external,  │
-                                └──────────────┘     │  read-only) │
-                                                     └─────────────┘
+                                ┌──────▼──────┐
+                                │   Celery     │
+                                │  Workers     │
+                                │ + Beat       │
+                                └──────────────┘
 ```
 
 The same topology rendered as a Mermaid flowchart for GitHub preview:
@@ -50,21 +55,17 @@ flowchart TB
     N[Nginx<br/>TLS · rate limiting · security headers]
     G["Gunicorn gthread<br/>workers × threads"]
     V[(Valkey 8<br/>default + rate_limit caches)]
-    R[(RabbitMQ 3.13<br/>high · default · low queues)]
+    R[(Broker<br/>RabbitMQ / Redis · 3 queues)]
     P[(PostgreSQL 16<br/>primary Django DB)]
     CW["Celery workers<br/>+ Beat scheduler"]
-    S[(Synoriq PostgreSQL<br/>external · read-only via SQLAlchemy)]
-    SES[AWS SES]
 
     C --> N
     N --> G
     G <--> V
     G <--> R
     G <--> P
-    G -->|SQLAlchemy engine pool| S
     R --> CW
     CW --> P
-    CW --> SES
     CW <--> V
 ```
 
@@ -117,62 +118,49 @@ The ASCII version is terminal-friendly; the Mermaid version renders on GitHub an
 
 Views never access the ORM directly. Services never construct HTTP responses.
 
-### External Data Access
+### External Data Access (optional path)
 
-The `leads` app uses a separate data access path for the external Synoriq database:
+`core/utils/db.py` ships an SQLAlchemy engine cache for reading from
+external databases that aren't owned by the Django ORM (legacy systems,
+analytics warehouses, partner-owned read replicas). Recommended shape
+when you need it:
 
 ```
-LeadListView / LeadDetailView
+ExternalDataView / ExternalDataService (facade)
         │
         ▼
-LeadsDataService (facade)
+DataStrategy (abstract — keep ORM swappable)
         │
         ▼
-LeadsDataStrategy (abstract)
+SqlStrategy (raw SQL + SQLAlchemy)
         │
         ▼
-SqlLeadsStrategy (raw SQL + SQLAlchemy)
+core/utils/db.py (engine cache, SqlRowSet wrapper)
         │
         ▼
-core/utils/db.py (SQLAlchemy engine management, SqlRowSet wrapper)
-        │
-        ▼
-External Synoriq PostgreSQL (connection pooled, read-only)
+External PostgreSQL (connection pooled, read-only)
 ```
 
-This is intentionally separate from the Django ORM path. SQLAlchemy manages its own connection pool (`pool_pre_ping=True`, `pool_size=5`, `max_overflow=10`) plus a 5-second connect timeout and a 30-second server-side statement timeout to kill hung queries.
+SQLAlchemy manages its own connection pool (`pool_pre_ping=True`,
+configurable `pool_size` + `max_overflow`) plus a 5-second connect
+timeout and a 30-second server-side statement timeout to kill hung
+queries. Never use this path for the primary Django database.
 
 ## Data Model
 
-### Entity Relationships
+### Entity Relationships (shipped)
 
 ```
 User ──M:N── Role ──M:N── Permission(Resource, Action)
   │
   ├── APIKey (1:N, encrypted key + prefix)
   │
-  ├── Query.assignee (N:1)
-  │
-  ├── QueryAssignmentRuleUser (1:N — user appears in rule pools)
-  │
-  └── audit fields (created_by, updated_by on all models)
-
-Partner ──1:N── FieldSection ──1:N── FieldDefinition
-  │            (via PartnerFieldSection M2M through-table)
-  │
-  ├── Query (1:N)
-  │
-  └── QueryAssignmentRule (1:N, nullable — null = wildcard)
-
-Query ──1:N── Remark (source: partner|synoriq, is_processed flag)
-  │
-  └── Query.parent (self-referential, max 1 level deep)
-
-QueryAssignmentRule ──1:N── QueryAssignmentRuleUser ──N:1── User
-  (priority, dimensions)         (display_order for
-   is_default flag,               stable round-robin)
-   round_robin_counter)
+  └── audit fields (created_by, updated_by on all BaseModel descendants)
 ```
+
+Domain apps drop in alongside `apps/accounts/`; their models inherit
+`BaseModel` (or `NamedBaseModel`) and pick up the audit + soft-delete
+fields automatically.
 
 ### Base Model Hierarchy
 
@@ -184,19 +172,13 @@ BaseModel (abstract)
 │
 ├── NamedBaseModel (abstract)
 │   ├── name (CharField)
-│   ├── code (CharField, unique)
-│   │
-│   ├── Partner
-│   └── Query
+│   └── code (CharField, unique)
 │
-├── FieldSection
-├── FieldDefinition
-├── Remark
 ├── Role
 ├── Permission
 └── APIKey
 
-User (AbstractUser -- separate hierarchy)
+User (AbstractUser — separate hierarchy)
 ```
 
 ## Resilience Architecture
@@ -224,8 +206,8 @@ Three layers of protection, from outermost to innermost:
 - **Cache**: Dual-cache pattern (default + rate_limit) with in-memory fallback
 
 ```
-@resilient("partner_api")
-def push_to_partner(data):
+@resilient("external_api")
+def call_external(data):
     # Outer: circuit breaker checks if service is available
     #   Inner: retry with exponential backoff on TransientError
     #     Innermost: actual HTTP call
@@ -247,7 +229,7 @@ Separation prevents rate limiting operations from evicting application cache ent
 
 | Data | Cache | TTL | Invalidation |
 |---|---|---|---|
-| Partner bearer tokens | default | 5 min | On auth field update (PartnerService.post_update) |
+| Application caches (tokens, query results, etc.) | default | per call-site | per call-site |
 | Circuit breaker state | rate_limit | recovery_timeout * 10 | On state transition (Lua script) |
 | Rate limit counters | rate_limit | Window duration | Auto-expire |
 
@@ -265,10 +247,12 @@ Separation prevents rate limiting operations from evicting application cache ent
 
 ### Encryption
 
-Partner authentication credentials (`auth_key`, `auth_cred`) use `EncryptedCharField`:
+`EncryptedCharField` is the at-rest encryption primitive (used today on
+`APIKey.encrypted_key`; reuse for any column holding secrets you'd be
+unwilling to dump):
 - Algorithm: Fernet (AES-128-CBC + HMAC-SHA256)
-- Key derivation: SHA256 of `FIELD_ENCRYPTION_KEY` (falls back to `SECRET_KEY`)
-- Graceful degradation: returns `[DECRYPTION_FAILED]` on key rotation/corruption
+- Key derivation: SHA256 of `FIELD_ENCRYPTION_KEY` (falls back to `SECRET_KEY` under DEBUG only)
+- Fail-closed: `from_db_value` raises `DecryptionError` on key rotation / corruption — callers must handle
 
 ## Async Task Processing
 
@@ -308,24 +292,20 @@ Partner authentication credentials (`auth_key`, `auth_cred`) use `EncryptedCharF
 
 ### AWS SES Integration
 
-Email is sent via AWS SES through `core/utils/ses.py`. The only current use is remark processing notifications.
+Email is sent via AWS SES through `core/utils/ses.py`:
 
 ```
-RemarkProcessingService
+DomainService
         │
         ▼
-RemarkEmailBuilder
-(builds subject + HTML body)
+EmailBuilder (subject + HTML body)
         │
         ▼
 core/utils/ses.py::send_email()
 @resilient("ses")
         │
         ▼
-boto3 SES client
-        │
-        ▼
-AWS SES (ap-south-1 by default)
+boto3 SES client → AWS SES
 ```
 
 **Configuration:**
@@ -334,12 +314,10 @@ AWS SES (ap-south-1 by default)
 |---------|---------|-------------|
 | Sender (default) | `SES_SENDER_EMAIL` | Default from-address for all SES sends |
 | SES Region | `SES_REGION` | Falls back to `AWS_REGION` if empty |
-| Remark sender | `REMARK_PROCESSING_SENDER_EMAIL` | From-address for remark notifications |
-| Remark recipients | `REMARK_PROCESSING_RECIPIENT_EMAILS` | Comma-separated list of recipients |
 
-**Resilience:** `send_email()` is wrapped with `@resilient("ses")` — circuit breaker + retry (3 attempts, exponential backoff). All email sends are **best-effort**: failures are caught, logged, and do not affect the calling transaction.
+**Resilience:** `send_email()` is wrapped with `@resilient("ses")` — circuit breaker + retry (3 attempts, exponential backoff). Treat email sends as **best-effort**: catch + log on the caller side rather than re-raising and rolling back the user-facing transaction.
 
-**Email content:** HTML template with a table listing all processed remarks (Query Code, Query Name, Remark Text, Source, Created At). All remark content is HTML-escaped to prevent XSS in email clients.
+**Content safety:** Any user-supplied content rendered into the email body must be HTML-escaped to prevent XSS in mail clients.
 
 ## Deployment Architecture
 
@@ -362,8 +340,8 @@ Internet → Gateway Nginx (TLS, port 80/443)
 
 - Images pulled from AWS ECR (`ECR_REGISTRY` + `IMAGE_TAG`)
 - Valkey password-protected
-- Network-isolated Docker network (`colend-net`)
-- Gunicorn: 4 workers, 60s timeout, 30s graceful shutdown
+- Network-isolated Docker network (project-specific name)
+- Gunicorn: tuned workers / timeout per environment (see [scalability.md](scalability.md))
 
 ### Production
 

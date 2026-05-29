@@ -1,7 +1,6 @@
 """Bounded fire-and-forget queue for best-effort dispatch.
 
-Direct port of ``colending_partner/src/core/utils/fire_and_forget.py``,
-adapted to the gateway's gthread-Django runtime (ThreadPoolExecutor +
+Adapted to a gthread-Django runtime (ThreadPoolExecutor +
 ``queue.Queue`` instead of asyncio).
 
 Use for audit logs, telemetry, and other side effects where the request

@@ -21,10 +21,6 @@ This module adds three recovery paths that operate simultaneously:
    ``BOOT_FALLBACK``. This is the only path that recovers a backend
    whose Valkey client was unreachable at ``__init__``.
 
-Direct port of patterns from
-``colending_partner/src/core/resilience/{cache,lifecycle}``. Vocabulary
-intentionally mirrors the sibling so an operator who knows one project's
-resilience model knows the other.
 """
 
 from __future__ import annotations

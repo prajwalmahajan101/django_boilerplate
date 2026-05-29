@@ -199,9 +199,9 @@ RESILIENCE_DEFAULTS = {
 ```python
 from core.resilience.retry import retry_on_failure
 
-@retry_on_failure("synoriq_db")
-def fetch_lead_data(app_number):
-    return execute_query(engine, sql, {"app_number": app_number})
+@retry_on_failure("external_db")
+def fetch_external_record(record_id):
+    return execute_query(engine, sql, {"record_id": record_id})
 ```
 
 ---

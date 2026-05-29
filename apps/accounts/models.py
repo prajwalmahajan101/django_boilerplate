@@ -129,7 +129,7 @@ class APIKey(BaseModel):
     )
     name = models.CharField(
         max_length=255,
-        help_text="Label for this key, e.g. 'Synoriq Production'",
+        help_text="Label for this key, e.g. 'CI Pipeline' or 'Mobile App Prod'",
     )
     prefix = models.CharField(
         max_length=8,

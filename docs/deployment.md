@@ -218,7 +218,7 @@ add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 - **Celery concurrency**: Set `CELERY_WORKER_CONCURRENCY` based on task I/O profile
 - **Valkey**: Configure `maxmemory` and eviction policy for expected cache size
 - **PostgreSQL**: Tune `DB_CONN_MAX_AGE` and connection pool settings
-- **Synoriq DB**: Tune `SYNORIQ_DB_POOL_SIZE` and `SYNORIQ_DB_MAX_OVERFLOW`
+- **External SQL sources** (if you wire any): tune `<NAME>_DB_POOL_SIZE` / `<NAME>_DB_MAX_OVERFLOW` per source. Pattern lives in `core/utils/db.py`.
 
 ### Monitoring
 

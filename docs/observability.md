@@ -20,10 +20,9 @@ The fatal failure mode of Prometheus instrumentation is unbounded label cardinal
 
 | Label | Domain | Notes |
 |---|---|---|
-| `event` | enum-like, ~20 values | e.g. `partner_push`, `synoriq_query`, `assignment_rr_pick` |
+| `event` | enum-like, ~20 values | e.g. `s3_upload`, `ses_send_email`, `external_query` |
 | `subsystem` | `cache`, `breaker`, `throttle`, `outbox`, `dispatch` | resilience subsystems |
 | `status` | `ok`, `error` | duration / counter success indicator |
-| `partner_slug` | the partner's short code | bounded by `Partner` row count (~50) |
 | `outcome` | `success`, `timeout`, `breaker_open`, `permission_denied` | classification of error paths |
 
 ### Unbounded labels — LOGS ONLY, never metrics
@@ -38,19 +37,16 @@ Anything containing PII (email, phone, PAN, Aadhaar), raw URLs, or raw error mes
 
 ## Metric naming vocabulary
 
-`co_lending_<verb>_<object>_<unit>`. Examples:
+`app_<verb>_<object>_<unit>`. Examples:
 
-- `co_lending_partner_push_duration_seconds` (histogram)
-- `co_lending_synoriq_query_duration_seconds` (histogram)
-- `co_lending_assignment_rr_pick_duration_seconds` (histogram)
-- `co_lending_s3_upload_duration_seconds` (histogram)
-- `co_lending_ses_send_email_duration_seconds` (histogram)
-- `co_lending_valkey_subsystem_degraded` (gauge, labeled by `subsystem`)
-- `co_lending_task_outbox_depth` (gauge — undelivered outbox rows)
-- `co_lending_task_outbox_attempts_total` (counter)
-- `co_lending_circuit_breaker_state` (gauge, labeled by `subsystem`)
+- `app_s3_upload_duration_seconds` (histogram)
+- `app_ses_send_email_duration_seconds` (histogram)
+- `app_valkey_subsystem_degraded` (gauge, labeled by `subsystem`)
+- `app_task_outbox_depth` (gauge — undelivered outbox rows)
+- `app_task_outbox_attempts_total` (counter)
+- `app_circuit_breaker_state` (gauge, labeled by `subsystem`)
 
-The Grafana dashboard at `ops/grafana/co-lending-gateway.json` references each one. A regression test (`apps/core/tests/test_grafana_dashboard_names.py`) parses the dashboard and pins the names so future renames touch both sites in lockstep.
+The prefix is project-wide; pick something specific (`acme_`, `payments_`, etc.) and apply it uniformly when you fork this boilerplate. If you ship a Grafana dashboard, pair it with a regression test that parses the dashboard JSON and pins each metric name so renames touch both sites in lockstep.
 
 ## How call sites emit metrics today
 

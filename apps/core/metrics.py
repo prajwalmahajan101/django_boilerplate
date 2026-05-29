@@ -117,7 +117,7 @@ def record_duration(
     """Record a duration sample for ``event``.
 
     Today: emits one INFO log with a structured payload. Tomorrow: ALSO
-    updates ``prometheus_client.Histogram(name=f"co_lending_{event}_duration_seconds")``.
+    updates ``prometheus_client.Histogram(name=f"app_{event}_duration_seconds")``.
 
     Args:
         event: enum-like event name (matches the ``log_duration`` event).
@@ -150,7 +150,7 @@ def record_counter(
     """Record ``n`` occurrences of ``event``.
 
     Today: emits one INFO log. Tomorrow: ALSO increments
-    ``prometheus_client.Counter(name=f"co_lending_{event}_total")``.
+    ``prometheus_client.Counter(name=f"app_{event}_total")``.
     """
     _assert_bounded(bounded_labels)
     logger.info(
@@ -174,7 +174,7 @@ def record_gauge(
     """Record the current value of a gauge.
 
     Today: emits one INFO log. Tomorrow: ALSO sets
-    ``prometheus_client.Gauge(name=f"co_lending_{name}").set(value)``.
+    ``prometheus_client.Gauge(name=f"app_{name}").set(value)``.
 
     Use for slow-moving state (outbox depth, breaker state, degraded backend count).
     """

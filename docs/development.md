@@ -291,19 +291,16 @@ class TestMyModelListView:
 
 Patterns you'll hit often in this codebase, with their canonical solutions.
 
-**Mocking Synoriq reads.** `LeadsDataService` is the boundary — patch it at the highest level you can. `fetch_all_details` returning `None` is a valid production state (Synoriq data lags), so make sure at least one test exercises that branch:
+**Mocking external boundaries.** Patch at the boundary class (a `*DataService` facade, a `*Strategy`, or the HTTP client), not at the function deep inside it. Always exercise the "external returned nothing / 404 / timeout" branch — those are the production states that flush bugs out:
 
 ```python
 from unittest.mock import patch
-from types import SimpleNamespace
 
-@patch("queries.services.assignment_engine.LeadsDataService")
-def test_engine_falls_open_on_missing_lead(mock_service):
-    mock_service.return_value.fetch_all_details.return_value = None
-    # ... engine still returns a user (or None if no default rule)
+@patch("myapp.services.ExternalDataService")
+def test_handler_falls_open_on_missing_remote(mock_service):
+    mock_service.return_value.fetch.return_value = None
+    # ... handler still produces a deterministic outcome
 ```
-
-For broader tests that exercise `LeadsDataService` itself, patch at the strategy layer (`SqlLeadsStrategy`) so the service's own logic runs.
 
 **Celery tasks in tests.** `config/settings/test.py` sets `CELERY_TASK_ALWAYS_EAGER = True` — tasks run synchronously in the test process. No broker, no worker. If you need to assert the task *was scheduled* without executing, temporarily set `CELERY_TASK_ALWAYS_EAGER = False` and inspect `celery.current_app.tasks`.
 
@@ -316,11 +313,9 @@ def test_remark_processing_sends_email(self):
     mock_send_email.assert_called_once()
 ```
 
-See `apps/queries/tests/test_remark_processing_service.py` for the canonical example.
-
 **Testing `BaseService` hooks.** The hook contract is `pre_create(data, user)` / `post_create(instance, user)` / `pre_update` / `post_update` / `pre_delete` / `post_delete(instance, user=None)`. Override the hook, call the service method, then assert on the instance. Don't call hooks directly — always go through `service.create/update/delete` so the `@transaction.atomic` wrapping runs. Tests covering cascade `post_delete(instance, user)` MUST pass a user through so subclass overrides stamp `updated_by` correctly.
 
-**Concurrency-sensitive code.** Use `TransactionTestCase` (not the default `TestCase`) so each thread sees the others' committed rows. Example: `apps/queries/tests/test_assignment_engine.py::RoundRobinConcurrencyTest` spins 10 threads against a 3-user pool and asserts a deterministic 4/3/3 distribution.
+**Concurrency-sensitive code.** Use `TransactionTestCase` (not the default `TestCase`) so each thread sees the others' committed rows. Spin N threads against a contested resource and assert a deterministic outcome (e.g. a round-robin counter producing the expected distribution).
 
 **AllowAny in tests.** The default test permission is `AllowAny` (set in `config/settings/test.py`). To exercise real RBAC in a test, explicitly set `permission_classes = [IsAuthenticated, HasResourcePermission]` on a test-scoped view subclass, or use `override_settings(REST_FRAMEWORK={...})`.
 
@@ -340,17 +335,16 @@ docker compose exec web python manage.py shell_plus
 
 ```bash
 docker compose exec web python manage.py dbshell   # psql as the app user
-docker compose exec db psql -U postgres co_lending_gateway
+docker compose exec db psql -U postgres app
 ```
 
-**Inspect the Synoriq DB (read-only path):**
+**Inspect an external SQL source via the read-only SQLAlchemy path:**
 
 ```python
 # Inside shell_plus
 from core.utils.db import build_url, get_engine, execute_query
-from django.conf import settings
-engine = get_engine(build_url(**settings.SYNORIQ_DB))
-result = execute_query(engine, "SELECT COUNT(*) FROM applications", {})
+engine = get_engine(build_url(host="…", port=5432, user="…", password="…", database="…"))
+result = execute_query(engine, "SELECT COUNT(*) FROM some_table", {})
 result.scalar
 ```
 
@@ -379,7 +373,7 @@ docker compose exec valkey redis-cli
 **Drop into pdb from a failing test:**
 
 ```bash
-docker compose exec web pytest -x --pdb apps/queries/tests/test_assignment_engine.py
+docker compose exec web pytest -x --pdb path/to/failing/test.py
 ```
 
 ### Observability
@@ -396,7 +390,7 @@ with log_duration(logger, "assignment_rr_pick", rule_id=rule.pk, pool_size=len(u
         cursor.execute(...)
 ```
 
-Canonical usage lives in `apps/queries/services/assignment_engine.py::_pick_user_round_robin` — the block wraps the raw `UPDATE ... RETURNING` so production can plot round-robin latency per-rule without touching the caller.
+Wrap any raw SQL or hot-path block so production can plot latency for that specific block without touching the caller.
 
 When to use it:
 - Any hot-path DB call whose p95 could matter later.
@@ -420,19 +414,22 @@ Attach the filter to any logger or handler via `logging.config.dictConfig`. The 
 docker exec co-lending-gateway-web-1 python manage.py makemigrations <app_name>
 
 # Apply migrations
-docker exec co-lending-gateway-web-1 python manage.py migrate
+docker compose exec web python manage.py migrate
 
 # Show migration status
-docker exec co-lending-gateway-web-1 python manage.py showmigrations
+docker compose exec web python manage.py showmigrations
 ```
 
-### External Database (SQLAlchemy)
+### External SQL sources
 
-The Synoriq database is accessed via `core/utils/db.py`:
+Read-only access to non-Django Postgres sources (legacy systems,
+analytics warehouses, partner read replicas) goes through
+`core/utils/db.py`:
+
 ```python
 from core.utils.db import build_url, execute_query, get_engine
 
-engine = get_engine(build_url(host="synoriq-db.internal", name="synoriq"))
+engine = get_engine(build_url(host="external-db.internal", database="warehouse"))
 result = execute_query(
     engine,
     "SELECT * FROM applications WHERE app_no = :app_no",
@@ -443,9 +440,9 @@ result = execute_query(
 # result.scalar  -> first cell value (or None)
 ```
 
-`build_url()` fills blanks from `DATABASES["default"]` so only the host/name that differ need to be passed. `get_engine()` caches one engine per URL for the process; it also applies a 5s connect timeout and a 30s server-side statement timeout so Synoriq queries can't hang the worker.
+`build_url()` fills blanks from `DATABASES["default"]` so only the host/name that differ need to be passed. `get_engine()` caches one engine per URL for the process; it also applies a 5s connect timeout and a 30s server-side statement timeout so external queries can't hang the worker.
 
-Never use Django ORM for the Synoriq database. Never use SQLAlchemy for the primary database.
+Never use Django ORM for external sources. Never use SQLAlchemy for the primary database.
 
 ## Logging
 

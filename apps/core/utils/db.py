@@ -201,9 +201,8 @@ def ping_engine(engine) -> bool:
     """Run a lightweight connectivity probe against *engine*.
 
     Returns ``True`` if a ``SELECT 1`` round-trip succeeds, ``False`` on any
-    error (logged with ``exc_info``). The single permitted home outside
-    :mod:`apps.leads` for direct SQLAlchemy use — call this from health checks,
-    readiness probes, and diagnostics instead of opening a connection inline.
+    error (logged with ``exc_info``). Call this from health checks, readiness
+    probes, and diagnostics instead of opening a connection inline.
     """
     from sqlalchemy import text
 
