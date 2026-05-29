@@ -60,6 +60,22 @@ class EncryptedCharField(models.CharField):
     Plaintext is encrypted before saving and decrypted on read.
 
     Empty strings and None are stored as-is (not encrypted).
+
+    Lookup limitation — read this before adding the field to a new model.
+    Fernet uses a fresh random IV per encryption, so two encryptions of
+    the same plaintext produce different ciphertext. Equality lookups
+    against the column (``.filter(field=plaintext)``) re-encrypt the
+    filter value with a *new* IV and will silently never match. There
+    is no supported way to look up a row by an encrypted value.
+
+    The pattern to use when you need lookup by an encrypted value is a
+    sidecar lookup column: store the first N characters as an indexed
+    plaintext column and resolve the full value with a constant-time
+    compare. See ``APIKey.prefix`` / ``APIKey.secret`` in
+    ``apps/accounts/models.py`` for the worked example — ``prefix`` is
+    an 8-char indexed lookup column with a partial covering index;
+    ``APIKeyAuthentication`` resolves the row by prefix then verifies
+    the full key with ``secrets.compare_digest``.
     """
 
     def get_prep_value(self, value):

@@ -29,6 +29,15 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   bucket. Set `NUM_PROXIES=1` for nginx, `NUM_PROXIES=2` for
   ALB + nginx. (ISSUE-029)
 
+### Documentation
+- `EncryptedCharField` class docstring now warns that equality
+  lookups against the column do not work — Fernet's random IV
+  means re-encrypting the filter value never matches. Suggests
+  the sidecar lookup column pattern (`APIKey.prefix`) for any
+  new model that needs to look up by an encrypted value.
+  Mirrored in `docs/data-model.md` as a published reference
+  section. (ISSUE-033)
+
 ### Changed
 - **Breaking default:** prod cache `KEY_PREFIX` is now env-driven
   (`CACHE_KEY_PREFIX`, default `"app"`). Was hard-coded to

@@ -208,6 +208,33 @@ service code on first-write of user-supplied data.
 
 ---
 
+## `EncryptedCharField` — lookup behaviour
+
+`apps/core/base/fields.py` ships `EncryptedCharField` (Fernet at rest,
+plaintext on read, fail-closed `DecryptionError` on bad ciphertext). One
+gotcha to internalise before adding it to a new model:
+
+**Equality lookups against an `EncryptedCharField` do not work.** Fernet
+uses a fresh random IV per encryption, so two encryptions of the same
+plaintext produce different ciphertext. Filtering by the field
+(`Model.objects.filter(secret="raw")`) re-encrypts the filter value with
+a new IV and silently never matches.
+
+When you need to look up a row by an encrypted value, follow the
+**sidecar lookup column** pattern in `apps/accounts/models.py::APIKey`:
+
+- Store a short (e.g. 8-char) plaintext slice as a separate indexed
+  `CharField` (`APIKey.prefix`).
+- A partial covering index on the active subset
+  (`Index(prefix, condition=Q(is_active=True, revoked_at__isnull=True))`)
+  satisfies the auth hot-path lookup from the index alone.
+- Resolve the row by prefix, then verify the full value in Python with
+  `secrets.compare_digest` against the decrypted `EncryptedCharField`.
+  This keeps lookup O(log n) without compromising the encrypt-at-rest
+  contract.
+
+The pattern is also visible in `apps/accounts/authentication.py::APIKeyAuthentication.authenticate`.
+
 ## See also
 
 - [adding-a-new-app.md](adding-a-new-app.md) — checklist form of this
