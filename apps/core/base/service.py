@@ -163,9 +163,15 @@ class BaseService(ABC, Generic[ModelType]):
         offset: int | None = None,
         select_related: list[str] | None = None,
         prefetch_related: list[str] | None = None,
-        active_only: bool = False,
+        active_only: bool = True,
     ) -> QuerySet[ModelType]:
         """List instances with filtering, ordering, and pagination.
+
+        ``active_only`` defaults to ``True`` — soft-deleted rows
+        (``is_active=False``) are hidden unless the caller explicitly
+        opts in with ``active_only=False``. The default is fail-safe:
+        a casually written listing endpoint that forgets the kwarg
+        would otherwise silently surface deleted rows to API consumers.
 
         Page-size contract: ``limit`` is silently clamped to
         ``max_page_size`` (default 100) — an absent ``limit`` is set to
@@ -220,6 +226,10 @@ class BaseService(ABC, Generic[ModelType]):
         return qs
 
     def list_active(self, **kwargs) -> QuerySet[ModelType]:
+        # Backwards-compat shim — list() now defaults active_only=True,
+        # so this is identical to a bare list() call. Kept so external
+        # callers don't break and the intent at the call site stays
+        # readable.
         return self.list(active_only=True, **kwargs)
 
     def filter(self, **kwargs) -> QuerySet[ModelType]:
