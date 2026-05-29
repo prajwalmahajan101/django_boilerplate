@@ -18,9 +18,9 @@ if _apps_dir not in _sys.path:
 # Boot-time drift guard: recompute what config/celery.py *would* resolve to
 # and refuse to start if the two siblings disagree. Catches the only realistic
 # failure mode of the duplication (someone edits one copy without the other).
-_celery_apps_dir = str(
-    (Path(__file__).resolve().parent.parent / "celery.py").parent.parent / "apps"
-)
+# Both files anchor on the project root (``parents[2]`` from the settings
+# package, ``parents[1]`` from config/celery.py — equal by construction).
+_celery_apps_dir = str(Path(__file__).resolve().parents[2] / "apps")
 if _apps_dir != _celery_apps_dir:
     raise RuntimeError(
         f"sys.path drift between config/settings/__init__.py ({_apps_dir!r}) "

@@ -155,7 +155,17 @@ class BaseService(ABC, Generic[ModelType]):
         prefetch_related: list[str] | None = None,
         active_only: bool = False,
     ) -> QuerySet[ModelType]:
-        """List instances with filtering, ordering, and pagination."""
+        """List instances with filtering, ordering, and pagination.
+
+        Page-size contract: ``limit`` is silently clamped to
+        ``max_page_size`` (default 100) — an absent ``limit`` is set to
+        the ceiling. The clamp emits a WARNING with the requested vs
+        capped values so operators can spot misconfigured callers in
+        logs. Subclasses raise the ceiling by overriding ``max_page_size``;
+        we never raise on over-large limits because pagination callers
+        routinely pass a default ``page_size`` from request params, and
+        a hard-fail would convert a config miss into a 500.
+        """
         qs = self.get_queryset()
 
         if select_related:
@@ -174,14 +184,15 @@ class BaseService(ABC, Generic[ModelType]):
             self._validate_order_keys(order_by)
             qs = qs.order_by(*order_by)
 
-        # Enforce the page-size ceiling. An explicit caller-supplied limit
-        # that exceeds ``max_page_size`` is capped silently (a debug log
-        # makes the cap visible in development); an absent limit is set
-        # to the ceiling so unbounded ``.all()``-style listings are
-        # impossible to trigger by accident.
+        # Enforce the page-size ceiling. An over-large caller-supplied
+        # ``limit`` is silently clamped to ``max_page_size`` (with a
+        # WARNING — visible at default LOG_LEVEL=INFO so the cap doesn't
+        # hide a buggy caller); an absent limit is set to the ceiling so
+        # unbounded ``.all()``-style listings can't be triggered by
+        # accident.
         capped_limit = limit if limit is not None else self.max_page_size
         if capped_limit > self.max_page_size:
-            logger.debug(
+            logger.warning(
                 "list_limit_capped",
                 extra={
                     "service": self.__class__.__name__,

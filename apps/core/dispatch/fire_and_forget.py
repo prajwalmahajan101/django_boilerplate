@@ -17,6 +17,7 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable
 
@@ -105,16 +106,17 @@ class FireAndForgetQueue:
     def drain(self, timeout: float = 5.0) -> bool:
         """Block until queued tasks are submitted to the executor.
 
-        Returns True if the queue drained within ``timeout``. Called at
-        shutdown to flush pending work; tests use it to assert delivery.
+        Returns True if the queue drained within ``timeout`` seconds,
+        False if the deadline expired with work still pending. Called
+        at shutdown to flush pending work; tests use it to assert
+        delivery.
         """
-        deadline_event = threading.Event()
-        deadline_event.wait(timeout=0)  # no-op, kept for readability
-        try:
-            self._queue.join()
-        except Exception:  # noqa: BLE001
-            return False
-        return self._queue.empty()
+        deadline = time.monotonic() + timeout
+        while not self._queue.empty():
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(0.05)
+        return True
 
     def stop(self, timeout: float = 5.0) -> None:
         """Signal the consumer to drain and stop, then shut the executor."""
