@@ -1,15 +1,24 @@
-"""Common logging utilities and context management."""
+"""Common logging utilities and context management.
+
+The request-ID slot itself lives in :mod:`core.context`; this module
+re-exports it as ``_request_id_var`` for the (many) existing callers that
+import it from here, plus the legacy ``set_request_context`` /
+``clear_request_context`` shims that ignored tokens. New code should
+import from :mod:`core.context` directly.
+"""
 
 import contextvars
 import logging
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
-# Context variable for request tracing across async boundaries.
-_request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "_request_id_var", default=None
+from core.context import (  # re-exported for back-compat
+    clear_request_context as _clear_request_context_with_token,
 )
+from core.context import request_id_ctx as _request_id_var
+from core.context import set_request_context as _set_request_context_with_token
 
 # Business-identifier context variables. Populated via `domain_context(...)` at
 # service-layer boundaries (push, assignment engine, remark task) so every
@@ -28,14 +37,19 @@ _query_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar(
 
 
 def set_request_context(request_id: str | None = None) -> None:
-    """Set request ID context for tracing across async boundaries."""
+    """Set request ID context for tracing across async boundaries.
+
+    Legacy shim — discards the reset token. New code should use
+    :func:`core.context.set_request_context` directly and pair the
+    returned token with :func:`core.context.clear_request_context`.
+    """
     if request_id is not None:
-        _request_id_var.set(request_id)
+        _set_request_context_with_token(request_id)
 
 
 def clear_request_context() -> None:
-    """Clear request context."""
-    _request_id_var.set(None)
+    """Clear request context (legacy no-token shim)."""
+    _clear_request_context_with_token(None)
 
 
 @contextmanager
@@ -157,10 +171,11 @@ def _record_metric_safe(
     labels for the log line (e.g. ``app_number``). Anything not in the
     bounded allow-list is silently dropped before forwarding.
     """
-    from core.metrics import _BOUNDED_LABEL_KEYS, record_duration  # noqa: PLC0415
+    from core.metrics import _BOUNDED_LABEL_KEYS, record_duration
 
     bounded = {
-        k: v for k, v in extras.items()
+        k: v
+        for k, v in extras.items()
         if k in _BOUNDED_LABEL_KEYS and isinstance(v, (str, int, float))
     }
     record_duration(event, duration_ms, status=status, **bounded)

@@ -5,26 +5,24 @@ from __future__ import annotations
 from threading import Lock
 from typing import Any
 
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import exception_handler
-
 from core.base.exception import BaseCustomError, derive_error_code
+from core.context import get_request_id
 from core.exceptions.infrastructure import (
     ExternalServiceError,
     ExternalTimeoutError,
     S3Exception,
-    SESException,
     ServiceUnavailableError,
+    SESException,
 )
 from core.exceptions.repository import (
     EntityNotFoundError,
     InactiveParentError,
     InvalidInputError,
     InvalidOutboundURLError,
-    RepositoryError,
 )
-from core.utils.logging import _request_id_var
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import exception_handler
 
 # Map custom exception types to HTTP status codes.
 # The builder list is the source of truth; the tuple is a lazily-built
@@ -86,7 +84,7 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
                     status_code = code
                     break
 
-        request_id = getattr(exc, "request_id", None) or _request_id_var.get(None)
+        request_id = getattr(exc, "request_id", None) or get_request_id()
 
         return Response(
             {
@@ -107,7 +105,7 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         # Django would render its default 500 HTML page, breaking the
         # envelope contract. ExceptionLoggingMiddleware has already
         # logged the original with exc_info, so observability is intact.
-        request_id = _request_id_var.get(None)
+        request_id = get_request_id()
         return Response(
             {
                 "success": False,
@@ -137,13 +135,9 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
             for field, msgs in remaining_errors.items():
                 if isinstance(msgs, list):
                     for msg in msgs:
-                        errors.append(
-                            _build_error_dict("VALIDATION_ERROR", str(msg), field=field)
-                        )
+                        errors.append(_build_error_dict("VALIDATION_ERROR", str(msg), field=field))
                 else:
-                    errors.append(
-                        _build_error_dict("VALIDATION_ERROR", str(msgs), field=field)
-                    )
+                    errors.append(_build_error_dict("VALIDATION_ERROR", str(msgs), field=field))
         else:
             errors = [_build_error_dict(error_code, message)]
     elif isinstance(response.data, list):
@@ -153,7 +147,7 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
         message = str(response.data)
         errors = [_build_error_dict(error_code, message)]
 
-    request_id = getattr(exc, "request_id", None) or _request_id_var.get(None)
+    request_id = getattr(exc, "request_id", None) or get_request_id()
 
     response.data = {
         "success": False,
@@ -194,7 +188,9 @@ register_exception_mapping(ServiceUnavailableError, status.HTTP_503_SERVICE_UNAV
 register_exception_mapping(ExternalTimeoutError, status.HTTP_502_BAD_GATEWAY)
 register_exception_mapping(S3Exception, status.HTTP_502_BAD_GATEWAY)
 register_exception_mapping(SESException, status.HTTP_502_BAD_GATEWAY)
-register_exception_mapping(ExternalServiceError, status.HTTP_502_BAD_GATEWAY)  # parent class — must be last
+register_exception_mapping(
+    ExternalServiceError, status.HTTP_502_BAD_GATEWAY
+)  # parent class — must be last
 register_exception_mapping(InactiveParentError, status.HTTP_409_CONFLICT)
 register_exception_mapping(InvalidOutboundURLError, status.HTTP_400_BAD_REQUEST)
 register_exception_mapping(InvalidInputError, status.HTTP_400_BAD_REQUEST)

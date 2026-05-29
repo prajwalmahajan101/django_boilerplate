@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from core.utils.logging import _request_id_var
+from core.context import get_request_id
 
 
 def derive_error_code(name: str, *, strip_suffix: bool = True) -> str:
@@ -61,7 +61,7 @@ class BaseCustomError(Exception):
         self.message = message or self.default_message
         if status_code is not None:
             self.status_code = status_code
-        self.request_id: str | None = _request_id_var.get(None)
+        self.request_id: str | None = get_request_id()
         super().__init__(self.message)
 
     def _derive_error_code(self) -> str:

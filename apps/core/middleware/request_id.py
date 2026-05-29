@@ -2,11 +2,10 @@
 
 import re
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
+from core.context import clear_request_context, set_request_context
 from django.http import HttpRequest, HttpResponse
-
-from core.utils.logging import clear_request_context, set_request_context
 
 # Valid request ID: UUID format or alphanumeric with hyphens, max 128 chars
 _REQUEST_ID_PATTERN = re.compile(r"^[a-zA-Z0-9\-]{1,128}$")
@@ -31,11 +30,11 @@ class RequestIDMiddleware:
 
         request.request_id = request_id
 
-        set_request_context(request_id=request_id)
+        token = set_request_context(request_id)
 
         try:
             response = self.get_response(request)
             response["X-Request-ID"] = request_id
             return response
         finally:
-            clear_request_context()
+            clear_request_context(token)
