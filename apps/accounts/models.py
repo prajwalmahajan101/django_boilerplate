@@ -66,8 +66,8 @@ class Role(models.Model):
         blank=True,
         related_name="roles",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)
 
     class Meta:
         ordering = ["name"]
@@ -148,6 +148,7 @@ class APIKey(BaseModel):
         null=True,
         blank=True,
         editable=False,
+        db_index=True,
         help_text=(
             "Set when the key is revoked. Authentication rejects keys with "
             "a non-null revoked_at even if the row is otherwise active. "
@@ -155,10 +156,25 @@ class APIKey(BaseModel):
         ),
     )
 
-    class Meta:
+    class Meta(BaseModel.Meta):
+        # Inheriting BaseModel.Meta pulls in the abstract audit-trail
+        # CheckConstraint (updated_at >= created_at) — abstract Meta options
+        # only propagate to concrete models that explicitly inherit them.
         ordering = ["-created_at"]
         verbose_name = "API Key"
         verbose_name_plural = "API Keys"
+        # Partial index that matches the exact auth-hot-path predicate in
+        # apps/accounts/authentication.py:
+        #   filter(prefix=..., is_active=True, revoked_at__isnull=True)
+        # The covering partial index lets Postgres satisfy the lookup
+        # from the index alone, no heap fetch on the common case.
+        indexes = [
+            models.Index(
+                fields=["prefix"],
+                condition=Q(is_active=True, revoked_at__isnull=True),
+                name="apikey_active_lookup",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.prefix}...)"
