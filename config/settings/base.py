@@ -31,6 +31,7 @@ def _env_bool(name: str, default: str) -> bool:
         return False
     raise ImproperlyConfigured(f"{name}={value!r} is not a valid boolean")
 
+
 # config/settings/base.py -> config/settings/ -> config/ -> project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -50,9 +51,7 @@ FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY") or SECRET_KEY
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
-    h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
-]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 CSRF_TRUSTED_ORIGINS = [
     o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
@@ -245,22 +244,14 @@ REST_FRAMEWORK = {
 # --------------------------------------------------------------------------
 # DRF Spectacular (OpenAPI schema)
 # --------------------------------------------------------------------------
+# Description blob, tag list, and per-status error-envelope responses
+# live in ``core.openapi.metadata`` so per-view ``@extend_schema`` calls
+# can reuse the same DEFAULT_RESPONSES set. Edit metadata there, not here.
+from core.openapi.metadata import API_DESCRIPTION, TAGS_METADATA  # noqa: E402
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Django Boilerplate API",
-    "DESCRIPTION": (
-        "Project API. Replace this description in `SPECTACULAR_SETTINGS` "
-        "in `config/settings/base.py` with one specific to your service.\n\n"
-        "## Authentication\n\n"
-        "- **Bearer JWT** via `POST /api/auth/login/` (or OAuth provider). "
-        "Pass as `Authorization: Bearer <token>`.\n"
-        "- **API Key** via `POST /api/accounts/api-keys/`. "
-        "Pass as `X-API-Key: <key>`.\n\n"
-        "## Response Envelope\n\n"
-        "All responses share a common JSON envelope with "
-        "`success`, `message`, `data`, `errors`, `request_id`. "
-        "Paginated list endpoints wrap items under `data.items` with a "
-        "`data.pagination` object.\n"
-    ),
+    "DESCRIPTION": API_DESCRIPTION,
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
@@ -272,19 +263,13 @@ SPECTACULAR_SETTINGS = {
     # Tag ordering — Swagger UI / ReDoc render groups in this order rather
     # than alphabetically. Each entry's ``description`` shows up inline at
     # the top of that tag's section.
-    "TAGS": [
-        {"name": "System", "description": "Health and readiness probes. No auth required."},
-        {"name": "Auth", "description": "Login, JWT token refresh, logout, and current-user profile."},
-        {"name": "API Keys", "description": "Issue, list, and revoke service-account API keys."},
-    ],
+    "TAGS": TAGS_METADATA,
 }
 
 # --------------------------------------------------------------------------
 # CORS Configuration
 # --------------------------------------------------------------------------
-_cors_origins = os.getenv(
-    "CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-)
+_cors_origins = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 if _cors_origins.strip() == "*":
     CORS_ALLOW_ALL_ORIGINS = True
     CORS_ALLOW_CREDENTIALS = False
@@ -297,9 +282,7 @@ else:
 # bypass and SelectiveCORSMiddleware behaves identically to the
 # upstream CorsMiddleware.
 _cors_excluded = os.getenv("CORS_EXCLUDED_PREFIXES", "").strip()
-CORS_EXCLUDED_PREFIXES = tuple(
-    p.strip() for p in _cors_excluded.split(",") if p.strip()
-)
+CORS_EXCLUDED_PREFIXES = tuple(p.strip() for p in _cors_excluded.split(",") if p.strip())
 
 # --------------------------------------------------------------------------
 # Cache Configuration (dual-cache: default + rate_limit)
@@ -557,9 +540,7 @@ SOCIALACCOUNT_ADAPTER = "accounts.adapters.CustomSocialAccountAdapter"
 # Set via env var as comma-separated list. Empty = skip validation
 # (relies on Google's server-side check only).
 _redirect_uris = os.getenv("GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS", "")
-GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS = [
-    u.strip() for u in _redirect_uris.split(",") if u.strip()
-]
+GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS = [u.strip() for u in _redirect_uris.split(",") if u.strip()]
 
 # --------------------------------------------------------------------------
 # dj-rest-auth
@@ -624,9 +605,7 @@ ASSET_MAX_BYTES = _env_int("ASSET_MAX_BYTES", str(25 * 1024 * 1024))
 # Empty string = use the full enum.
 _asset_mime_csv = os.getenv("ASSET_ALLOWED_MIME_TYPES", "").strip()
 ASSET_ALLOWED_MIME_TYPES = (
-    [m.strip() for m in _asset_mime_csv.split(",") if m.strip()]
-    if _asset_mime_csv
-    else None
+    [m.strip() for m in _asset_mime_csv.split(",") if m.strip()] if _asset_mime_csv else None
 )
 
 # --------------------------------------------------------------------------
@@ -707,9 +686,7 @@ SECURE_BROWSER_XSS_FILTER = True
 # --------------------------------------------------------------------------
 _outbound_allow = os.getenv("OUTBOUND_URL_ALLOWLIST", "*").strip()
 OUTBOUND_URL_ALLOWLIST = (
-    [e.strip() for e in _outbound_allow.split(",") if e.strip()]
-    if _outbound_allow
-    else []
+    [e.strip() for e in _outbound_allow.split(",") if e.strip()] if _outbound_allow else []
 )
 
 # --------------------------------------------------------------------------
@@ -721,8 +698,6 @@ OUTBOUND_URL_ALLOWLIST = (
 # construction. See docs/scalability.md.
 _sentinel_hosts = os.getenv("VALKEY_SENTINEL_HOSTS", "").strip()
 VALKEY_SENTINEL_HOSTS = (
-    [h.strip() for h in _sentinel_hosts.split(",") if h.strip()]
-    if _sentinel_hosts
-    else []
+    [h.strip() for h in _sentinel_hosts.split(",") if h.strip()] if _sentinel_hosts else []
 )
 VALKEY_SENTINEL_MASTER_NAME = os.getenv("VALKEY_SENTINEL_MASTER_NAME", "")

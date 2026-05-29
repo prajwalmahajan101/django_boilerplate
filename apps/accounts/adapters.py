@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 
+from accounts.repositories import RoleRepository
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 from django.db import transaction
-
-from accounts.repositories import RoleRepository
 
 logger = logging.getLogger(__name__)
 
@@ -91,17 +90,13 @@ class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):
         with transaction.atomic():
             user = super().save_user(request, sociallogin, form)
 
-            # Only read X-Forwarded-For when running behind a trusted proxy.
-            # Without this check, any client can forge their last_login_ip.
-            from django.conf import settings as django_settings
+            # Trust-proxy-header policy lives in core.utils.network so
+            # audit log, throttle bucket, and last_login_ip can never
+            # disagree on who the caller is.
+            from core.utils.network import client_ip
 
-            if getattr(django_settings, "USE_X_FORWARDED_FOR", False):
-                ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip()
-            else:
-                ip = None
-            if not ip:
-                ip = request.META.get("REMOTE_ADDR")
-            if ip:
+            ip = client_ip(request)
+            if ip and ip != "unknown":
                 user.last_login_ip = ip
                 user.save(update_fields=["last_login_ip"])
 
