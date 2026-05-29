@@ -23,6 +23,7 @@ from core.resilience.throttles.base import (
     get_user_tier,
     log_throttle_event,
 )
+from core.resilience.throttles.cache_adapter import DjangoCacheAdapter
 from core.resilience.throttles.lua_scripts import (
     GLOBAL_THROTTLE_LUA_SCRIPT,
     THROTTLE_LUA_SCRIPT,
@@ -80,7 +81,7 @@ class ValkeyRateThrottle(SimpleRateThrottle):
         """Initialize cache via the cache provider."""
         self._cache_backend = get_cache("rate_limit")
         # DRF's SimpleRateThrottle expects self.cache — provide a compatible wrapper
-        self.cache = _DjangoCacheAdapter(self._cache_backend)
+        self.cache = DjangoCacheAdapter(self._cache_backend)
         # Warm the shared Valkey client on first instantiation so every
         # subsequent request reuses the same reference.
         self._get_valkey_client()
@@ -446,23 +447,3 @@ class EndpointThrottle(ValkeyRateThrottle):
         return self.cache_format % {"scope": "endpoint", "ident": ident}
 
 
-# ---------------------------------------------------------------------------
-# Django cache adapter — bridges BaseCacheBackend to Django cache API
-# ---------------------------------------------------------------------------
-
-class _DjangoCacheAdapter:
-    """Wraps a BaseCacheBackend to provide the Django cache API that
-    DRF's SimpleRateThrottle expects (get, set with positional timeout)."""
-
-    def __init__(self, backend):
-        self._backend = backend
-
-    def get(self, key, default=None):
-        result = self._backend.get(key)
-        return result if result is not None else default
-
-    def set(self, key, value, timeout=None):
-        self._backend.set(key, value, timeout=timeout)
-
-    def delete(self, key):
-        self._backend.delete(key)

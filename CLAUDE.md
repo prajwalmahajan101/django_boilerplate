@@ -2,7 +2,10 @@
 
 > A Django 6 + DRF starter with vetted core infrastructure. See
 > [README.md](README.md) for quickstart, [docs/](docs/) for the full
-> infrastructure reference.
+> infrastructure reference, and
+> [docs/adding-a-new-app.md](docs/adding-a-new-app.md) for the
+> step-by-step contract when you drop a new domain app next to
+> `apps/accounts/`.
 
 ## Key conventions
 
