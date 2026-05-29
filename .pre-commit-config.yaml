@@ -60,6 +60,18 @@ repos:
       # scripts/stale_refs.yaml; append there as part of every rename
       # commit. Scans docs/ + CLAUDE.md + README.md + app-level
       # CLAUDE.md, skips .code_review/ and CHANGELOG.md.
+      # Enforce the one-rule layering invariant: apps.core must never
+      # import from a sibling domain app (today: accounts) or from
+      # config. See apps/core/CLAUDE.md and scripts/check_layering.py
+      # for the rationale. Test files are exempt — fixtures legitimately
+      # cross app boundaries.
+      - id: check-layering
+        name: enforce apps/core layering (no sibling/config imports)
+        entry: python scripts/check_layering.py
+        language: system
+        files: ^apps/core/.*\.py$
+        pass_filenames: false
+
       - id: check-stale-refs
         name: check for stale references in docs
         entry: python scripts/check_stale_refs.py

@@ -125,9 +125,15 @@ def cache_check(alias: str = "default") -> HealthCheckResult:
 
 
 def celery_broker_check() -> HealthCheckResult:
-    """Open a short-lived connection to the Celery broker."""
+    """Open a short-lived connection to the Celery broker.
+
+    Resolved via :data:`celery.current_app` rather than importing
+    ``config.celery`` directly — keeps ``apps.core`` independent of
+    the project skeleton (the layering guard in
+    ``scripts/check_layering.py`` would otherwise flag this).
+    """
     try:
-        from config.celery import app as celery_app
+        from celery import current_app as celery_app
 
         conn = celery_app.connection()
         try:
