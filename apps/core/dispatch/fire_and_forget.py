@@ -50,6 +50,11 @@ class FireAndForgetQueue:
             thread_name_prefix=f"fire-and-forget-{name}",
         )
         self._dropped = 0
+        # Guards _dropped under multi-producer load. Without it the
+        # read-modify-write in submit() races and the counter silently
+        # under-reports — and this counter is the load-shed signal that
+        # is_saturated() / dropped_count surface to ops dashboards.
+        self._dropped_lock = threading.Lock()
         self._stop = threading.Event()
         self._drained = threading.Event()
         self._consumer_thread = threading.Thread(
@@ -67,13 +72,15 @@ class FireAndForgetQueue:
             self._queue.put_nowait(fn)
             return True
         except queue.Full:
-            self._dropped += 1
+            with self._dropped_lock:
+                self._dropped += 1
+                dropped_snapshot = self._dropped
             logger.warning(
                 "fire_and_forget_overflow",
                 extra={
                     "event": "fire_and_forget_overflow",
                     "queue": self.name,
-                    "dropped_count": self._dropped,
+                    "dropped_count": dropped_snapshot,
                 },
             )
             return False
@@ -154,7 +161,22 @@ def registered_queues() -> list[FireAndForgetQueue]:
         return list(_queues.values())
 
 
-def drain_all(timeout: float = 5.0) -> None:
-    """Drain every registered queue. Called at SIGTERM / process exit."""
+def drain_all(timeout: float = 5.0) -> bool:
+    """Drain every registered queue within a single shared deadline.
+
+    ``timeout`` is the **total** budget across all queues, not a per-queue
+    bound. A naive ``for q in queues: q.drain(timeout=timeout)`` would
+    block up to ``N * timeout`` seconds on SIGTERM, which would push past
+    the orchestrator grace period into SIGKILL territory and lose any
+    work still queued.
+
+    Returns True if every queue drained within the shared deadline,
+    False if any queue still had pending items when its slice ran out.
+    """
+    deadline = time.monotonic() + timeout
+    all_drained = True
     for q in registered_queues():
-        q.drain(timeout=timeout)
+        remaining = max(0.0, deadline - time.monotonic())
+        if not q.drain(timeout=remaining):
+            all_drained = False
+    return all_drained

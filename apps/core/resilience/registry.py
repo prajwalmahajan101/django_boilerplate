@@ -41,14 +41,23 @@ class ResilienceRegistry:
         return getattr(module, class_name)
 
     def register_service(self, service_name: str, config: dict) -> None:
-        """Register resilience overrides for a service."""
-        if service_name in self._breakers:
-            raise ValueError(
-                f"Cannot register '{service_name}': a circuit breaker "
-                "has already been created for this service. "
-                "Register services before the first call."
-            )
-        self._services[service_name] = config
+        """Register resilience overrides for a service.
+
+        Runs under ``self._lock`` so the ``_breakers`` read and the
+        ``_services`` write are atomic with respect to ``get_breaker``.
+        Without the lock a concurrent ``get_breaker`` call could observe
+        ``_services`` mid-write or skip a registration that landed just
+        after its read. Documented thread-safety contract — see
+        ``docs/thread-safety.md``.
+        """
+        with self._lock:
+            if service_name in self._breakers:
+                raise ValueError(
+                    f"Cannot register '{service_name}': a circuit breaker "
+                    "has already been created for this service. "
+                    "Register services before the first call."
+                )
+            self._services[service_name] = config
 
     def get_config(self, service_name: str) -> dict:
         defaults = copy.deepcopy(settings.RESILIENCE_DEFAULTS)

@@ -7,6 +7,19 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Fixed
+- `FireAndForgetQueue._dropped` increment is now lock-guarded
+  (`apps/core/dispatch/fire_and_forget.py`). Without it the
+  read-modify-write under multi-producer load silently
+  under-reported the drop counter that ops dashboards key on.
+  (ISSUE-031)
+- `drain_all(timeout)` honours its argument as a *total*
+  budget across registered queues, not per-queue. With N queues
+  the prior implementation could block up to `N * timeout`
+  seconds on SIGTERM — past the orchestrator grace period.
+  Returns `bool` now (was `None`). (ISSUE-030)
+- `ResilienceRegistry.register_service` now writes `_services`
+  under `self._lock`, matching the documented thread-safety
+  contract and avoiding a stale read in `get_breaker`. (ISSUE-032)
 - DRF throttle ident now respects proxy hops. Added
   `REST_FRAMEWORK["NUM_PROXIES"]` (env-driven, default `0`) so
   `BaseThrottle.get_ident` strips trusted `X-Forwarded-For` entries
