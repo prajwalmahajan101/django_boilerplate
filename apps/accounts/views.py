@@ -30,14 +30,12 @@ from accounts.repositories import UserRepository
 from accounts.serializers import GoogleCallbackSerializer, UserProfileSerializer
 from accounts.services import APIKeyService, UserService
 from core.enums import Action, Resource
+from core.middleware.throttling import AuthEndpointThrottle
 from core.permissions import HasResourcePermission
 from core.resilience.throttles import BurstThrottle, GlobalThrottle, ValkeyRateThrottle
 from core.responses import ErrorResponse, SuccessResponse
 
 logger = logging.getLogger(__name__)
-
-user_repository = UserRepository()
-user_service = UserService(user_repository)
 
 
 class AuthThrottle(ValkeyRateThrottle):
@@ -58,10 +56,10 @@ class AuthThrottle(ValkeyRateThrottle):
         }
 
 
-# DRF-level burst throttle. Complements AuthThrottle (Valkey-backed,
-# 20/hour sustained) with a 5/min anonymous-IP cap — caught regardless
-# of nginx coverage. Defence-in-depth against credential-stuffing bursts.
-from core.middleware.throttling import AuthEndpointThrottle  # noqa: E402
+# AuthEndpointThrottle (imported above) is a DRF-level burst throttle.
+# Complements AuthThrottle (Valkey-backed, 20/hour sustained) with a
+# 5/min anonymous-IP cap — caught regardless of nginx coverage.
+# Defence-in-depth against credential-stuffing bursts.
 
 
 class GoogleLogin(SocialLoginView):
@@ -128,7 +126,7 @@ def token_refresh(request: Request) -> Response:
         # Rotate refresh tokens and blacklist the old one.
         # Create new token BEFORE blacklisting old one — if
         # new-token creation fails the user still has a valid session.
-        user = user_repository.get_by_id(int(token["user_id"]))
+        user = UserRepository().get_by_id(int(token["user_id"]))
         if not user or not user.is_active:
             return ErrorResponse(
                 message="Invalid or expired refresh token",
@@ -207,7 +205,7 @@ def me(request: Request) -> Response:
     # InvalidTimezoneError are registered in AccountsConfig.ready() so
     # they surface through the DRF handler with the standard envelope
     # and the auto-derived error_code.
-    updated_user = user_service.update_profile(user.id, request.data)
+    updated_user = UserService().update_profile(user.id, request.data)
     serializer = UserProfileSerializer(updated_user)
     return SuccessResponse(data=serializer.data)
 

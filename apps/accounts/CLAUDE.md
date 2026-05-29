@@ -16,7 +16,8 @@ Handles all auth (Google OAuth2, JWT, API keys) and RBAC (roles → permissions 
 - **Every view sets `resource` + `action`** class attrs. `HasResourcePermission` handles the lookup; don't hand-roll permission checks.
 - **Per-request permission cache is automatic** — `HasResourcePermission` stores results on the request object keyed by `(resource, action)`. Checking the same pair twice costs one DB query.
 - **Never change `USERNAME_FIELD` or `REQUIRED_FIELDS`** after first migration. Django auth machinery depends on them.
-- **`UserService.update_profile` validates timezone** against `zoneinfo.available_timezones()` and `select_for_update`s the row. Only `first_name` / `last_name` / `timezone` are writable; `email` and `roles` are not.
+- **`UserService.update_profile` validates timezone** against `zoneinfo.available_timezones()`. Only `first_name` / `last_name` / `timezone` are writable; `email` and `roles` are not. Row-level locking lives in `UserRepository.update` (so any caller — service, admin script, management command — gets the same contract).
+- **Services are instantiated per-call** (`UserService().update_profile(...)`, `APIKeyService().delete(...)`, `UserRepository().get_by_id(...)`), not as module-level singletons. The constructors are cheap; module-level instances tie themselves to import order and hide test seams.
 - **`RBACBackend`** maps Django's string permission format (`"app.action_model"`) to `(Resource, Action)` tuples — required for admin-panel integration.
 
 ## Gotchas

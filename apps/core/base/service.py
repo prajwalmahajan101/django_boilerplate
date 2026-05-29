@@ -7,7 +7,9 @@ and pre/post hooks for domain-specific business rules.
 
 from __future__ import annotations
 
+import logging
 from abc import ABC
+from collections import deque
 from typing import Any, Generic, TypeVar
 
 from django.db import models, transaction
@@ -15,6 +17,8 @@ from django.db.models import QuerySet
 from django.utils import timezone
 
 from core.exceptions import EntityNotFoundError
+
+logger = logging.getLogger(__name__)
 
 ModelType = TypeVar("ModelType", bound=models.Model)
 
@@ -34,6 +38,12 @@ class BaseService(ABC, Generic[ModelType]):
 
     model: type[ModelType]
     allowed_filter_fields: frozenset[str] | None = None
+    allowed_order_fields: frozenset[str] | None = None
+
+    # Maximum depth for ``_cascade_soft_delete`` recursion. Beyond this
+    # the cascade short-circuits with a WARNING log — protects against
+    # circular soft-FK chains introduced by future contributors.
+    MAX_CASCADE_DEPTH: int = 10
 
     # ------------------------------------------------------------------
     # Queryset
@@ -54,6 +64,26 @@ class BaseService(ABC, Generic[ModelType]):
                 raise ValueError(
                     f"Filter on '{key}' is not allowed. "
                     f"Allowed fields: {sorted(self.allowed_filter_fields)}"
+                )
+
+    def _validate_order_keys(self, order_by: list[str]) -> None:
+        """Validate order_by keys against allowed_order_fields if defined.
+
+        Without an allowlist, callers can sort on unindexed or sensitive
+        columns. The default ``None`` is permissive so existing code keeps
+        working; subclasses opt in by setting ``allowed_order_fields``.
+        """
+        if self.allowed_order_fields is None:
+            return
+        for raw in order_by:
+            # Strip leading "-" for descending sort.
+            field = raw.lstrip("-")
+            # Strip lookup suffixes (e.g. "user__email" → "user")
+            base_field = field.split("__")[0]
+            if base_field not in self.allowed_order_fields:
+                raise ValueError(
+                    f"Ordering by '{raw}' is not allowed. "
+                    f"Allowed fields: {sorted(self.allowed_order_fields)}"
                 )
 
     # ------------------------------------------------------------------
@@ -136,6 +166,7 @@ class BaseService(ABC, Generic[ModelType]):
             qs = qs.filter(**filters)
 
         if order_by:
+            self._validate_order_keys(order_by)
             qs = qs.order_by(*order_by)
 
         if offset is not None and limit is not None:
@@ -310,29 +341,50 @@ class BaseService(ABC, Generic[ModelType]):
         self.post_delete(instance, user=user)
         return True
 
-    @staticmethod
-    def _cascade_soft_delete(instance: ModelType, user: Any | None = None) -> None:
-        """Recursively soft-delete related objects linked via CASCADE foreign keys.
+    @classmethod
+    def _cascade_soft_delete(cls, instance: ModelType, user: Any | None = None) -> None:
+        """Soft-delete related objects linked via CASCADE foreign keys (BFS).
 
-        Propagates ``user`` into ``updated_by`` when the related model has that
-        field — without it, cascade rows silently misattribute state changes to
-        the previous editor instead of the actor who triggered the delete.
+        Walks the related-object graph breadth-first with a depth cap of
+        ``MAX_CASCADE_DEPTH``. Beyond the cap, the cascade short-circuits
+        and logs WARNING — this protects against circular soft-FK chains
+        introduced by future contributors.
+
+        Propagates ``user`` into ``updated_by`` when the related model has
+        that field — without it, cascade rows silently misattribute state
+        changes to the previous editor instead of the actor who triggered
+        the delete.
         """
-        for rel in instance._meta.related_objects:
-            if rel.on_delete is not models.CASCADE:
+        # (instance, depth) — start at depth 0 (root)
+        frontier: deque[tuple[Any, int]] = deque([(instance, 0)])
+        while frontier:
+            current, depth = frontier.popleft()
+            if depth >= cls.MAX_CASCADE_DEPTH:
+                logger.warning(
+                    "cascade_soft_delete depth cap reached",
+                    extra={
+                        "model": type(current).__name__,
+                        "pk": getattr(current, "pk", None),
+                        "depth": depth,
+                        "max_depth": cls.MAX_CASCADE_DEPTH,
+                    },
+                )
                 continue
-            related_model = rel.related_model
-            if not hasattr(related_model, "is_active"):
-                continue
-            accessor = rel.get_accessor_name()
-            related_qs = getattr(instance, accessor).filter(is_active=True)
-            children = list(related_qs)
-            update_kwargs: dict[str, Any] = {
-                "is_active": False,
-                "updated_at": timezone.now(),
-            }
-            if user is not None and hasattr(related_model, "updated_by"):
-                update_kwargs["updated_by"] = user
-            related_qs.update(**update_kwargs)
-            for child in children:
-                BaseService._cascade_soft_delete(child, user=user)
+            for rel in current._meta.related_objects:
+                if rel.on_delete is not models.CASCADE:
+                    continue
+                related_model = rel.related_model
+                if not hasattr(related_model, "is_active"):
+                    continue
+                accessor = rel.get_accessor_name()
+                related_qs = getattr(current, accessor).filter(is_active=True)
+                children = list(related_qs)
+                update_kwargs: dict[str, Any] = {
+                    "is_active": False,
+                    "updated_at": timezone.now(),
+                }
+                if user is not None and hasattr(related_model, "updated_by"):
+                    update_kwargs["updated_by"] = user
+                related_qs.update(**update_kwargs)
+                for child in children:
+                    frontier.append((child, depth + 1))

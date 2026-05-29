@@ -91,6 +91,13 @@ The key invariants enforced by this design:
    forward it.** The base signature is `post_delete(instance, user=None)`;
    every override must respect the `user` argument or cascade rows end up
    with NULL `updated_by`.
+4. **Cascade depth is bounded** by `BaseService.MAX_CASCADE_DEPTH`
+   (default 10). The walk is breadth-first; at the cap the cascade
+   short-circuits and logs WARNING with `model`, `pk`, and `depth`.
+   This protects against circular soft-FK chains a future contributor
+   might introduce. Subclasses can override the class attribute if a
+   legitimate cascade exceeds 10 levels — but consider whether the
+   cycle is the actual bug first.
 
 ## Failure modes to watch for
 

@@ -13,6 +13,8 @@ from accounts.models import APIKey
 from accounts.repositories import UserRepository
 from core.base.service import BaseService
 
+__all__ = ["APIKeyService", "UserService"]
+
 logger = logging.getLogger(__name__)
 
 
@@ -70,7 +72,8 @@ class UserService:
 
         Filters input to allowed fields, validates timezone against
         the IANA database, and delegates persistence to the repository.
-        Acquires a row-level lock to prevent concurrent update races.
+        Locking + atomicity now live on ``UserRepository.update`` — see
+        ISSUE-008. Don't re-wrap with ``transaction.atomic`` here.
         """
         update_data = {
             k: v for k, v in data.items() if k in self.UPDATABLE_PROFILE_FIELDS
@@ -85,6 +88,4 @@ class UserService:
             if update_data["timezone"] not in available_timezones():
                 raise InvalidTimezoneError()
 
-        with transaction.atomic():
-            user = self.repository.get_queryset().select_for_update().get(pk=user_id)
-            return self.repository.update(user, update_data)
+        return self.repository.update(user_id, update_data)

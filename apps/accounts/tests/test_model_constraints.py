@@ -30,13 +30,12 @@ class PermissionEnumConstraintTests(TestCase):
             Permission.objects.create(resource="account", action="bogus_action")
 
     def test_valid_pair_accepted(self):
-        # Sanity: a known-good (resource, action) saves cleanly. The earlier
-        # seed migrations (0002/0003/0004/0012/0014) populate most of the
-        # grid — use ``get_or_create`` so the test passes whether the row
-        # already exists or not. The point is to confirm the CHECK doesn't
-        # reject valid enum values.
+        # Sanity: a known-good (resource, action) pair saves cleanly. Use
+        # ``get_or_create`` so the test passes whether seed migrations
+        # already created the row or not. The point is to confirm the
+        # CHECK constraints don't reject valid enum values.
         permission, _ = Permission.objects.get_or_create(
-            resource="lead", action="push"
+            resource="account", action="read"
         )
-        self.assertEqual(permission.resource, "lead")
-        self.assertEqual(permission.action, "push")
+        self.assertEqual(permission.resource, "account")
+        self.assertEqual(permission.action, "read")

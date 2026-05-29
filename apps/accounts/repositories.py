@@ -1,6 +1,7 @@
 """Repositories for auth-related models (User, Role)."""
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import QuerySet
 
 from accounts.models import Role
@@ -28,7 +29,20 @@ class UserRepository:
         except self.model.DoesNotExist:
             return None
 
-    def update(self, user, data: dict):
+    @transaction.atomic
+    def update(self, user_id: int, data: dict):
+        """Update a user under a row-level lock.
+
+        Locking lives at the repository so any caller — service, admin
+        script, management command — is on the same contract. Callers
+        pass the ``user_id``, not a pre-fetched instance, so the lock
+        is acquired here under ``@transaction.atomic``.
+        """
+        user = (
+            self.get_queryset()
+            .select_for_update()
+            .get(pk=user_id)
+        )
         for field, value in data.items():
             setattr(user, field, value)
         user.save(update_fields=list(data.keys()))
