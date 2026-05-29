@@ -126,6 +126,20 @@ class FireAndForgetQueue:
     def dropped_count(self) -> int:
         return self._dropped
 
+    def is_saturated(self, threshold: float = 0.9) -> bool:
+        """Return True when queue depth is at or above ``threshold`` of capacity.
+
+        Callers wrapping high-volume endpoints check this before ``submit()``
+        and can shed load — typically by raising ``ServiceUnavailableError``
+        for a 503 response — instead of letting the queue silently drop on
+        overflow. ``threshold`` defaults to 0.9 so callers get warning room
+        before the queue actually fills.
+        """
+        maxsize = self._queue.maxsize
+        if maxsize <= 0:
+            return False
+        return (self._queue.qsize() / maxsize) >= threshold
+
 
 def get_queue(name: str) -> FireAndForgetQueue:
     """Return the FireAndForgetQueue registered under ``name``."""

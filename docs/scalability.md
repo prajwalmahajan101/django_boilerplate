@@ -117,3 +117,46 @@ assumed a single process.
 - CDN / edge caching topology.
 
 These are project-specific and intentionally left to the consuming repo.
+
+## 8. Tuning checklist (env vars)
+
+Every knob below is read at boot from the environment; defaults match the
+section §1 / §3 recommendations for a moderate-traffic deployment.
+
+### Gunicorn
+
+| Variable | Default | Local | UAT | Prod | Notes |
+|---|---|---|---|---|---|
+| `GUNICORN_WORKERS` | 4 | 2 | 4 | 2 × vCPU | One process per vCPU is the usual ceiling. |
+| `GUNICORN_THREADS` | 4 | 2 | 4 | 4–8 | Higher only if I/O-bound and DB pool keeps up. |
+| `GUNICORN_TIMEOUT` | 130 | — | — | — | Must exceed downstream-call timeouts. |
+| `GUNICORN_MAX_REQUESTS` | 10000 | — | — | — | Recycles workers to bound memory growth. |
+| `GUNICORN_MAX_REQUESTS_JITTER` | 500 | — | — | — | Avoid synchronous recycle storms. |
+| `GUNICORN_BACKLOG` | 2048 | — | — | — | Raise if OS listen queue overflows. |
+
+### Celery
+
+| Variable | Default | Notes |
+|---|---|---|
+| `CELERY_TASK_TIME_LIMIT` | 1800 | Seconds before hard SIGKILL. |
+| `CELERY_TASK_SOFT_TIME_LIMIT` | 1500 | Seconds before `SoftTimeLimitExceeded`. |
+| `CELERY_WORKER_CONCURRENCY` | 4 | Threads per worker process. |
+| `CELERY_WORKER_PREFETCH_MULTIPLIER` | 1 | Fair dispatch — keep at 1 for long tasks. |
+| `CELERY_SEND_EVENTS` | true | Toggle to `false` in prod once metrics replace Flower. |
+
+### Fire-and-forget queue load-shed
+
+The bounded `FireAndForgetQueue` (`apps/core/dispatch/fire_and_forget.py`)
+drops on overflow by default. High-volume callers should check
+`is_saturated()` before `submit()` and surface a 503 via
+`ServiceUnavailableError` instead of accepting silent drops:
+
+```python
+queue = get_queue("audit_log")
+if queue.is_saturated():
+    raise ServiceUnavailableError("audit_log queue is saturated; retry later")
+queue.submit(lambda: write_audit_row(payload))
+```
+
+The threshold defaults to 0.9 of `max_in_flight`; tune via the constructor
+argument when instantiating the queue.

@@ -21,6 +21,16 @@ def _env_int(name: str, default: str) -> int:
     except (ValueError, TypeError):
         raise ImproperlyConfigured(f"{name}={value!r} is not a valid integer")
 
+
+def _env_bool(name: str, default: str) -> bool:
+    """Parse an environment variable as bool. Accepts true/false/1/0/yes/no."""
+    value = os.getenv(name, default).strip().lower()
+    if value in ("true", "1", "yes", "on"):
+        return True
+    if value in ("false", "0", "no", "off", ""):
+        return False
+    raise ImproperlyConfigured(f"{name}={value!r} is not a valid boolean")
+
 # config/settings/base.py -> config/settings/ -> config/ -> project root
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -371,19 +381,24 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # Task execution
 CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 1800  # 30 min hard limit
-CELERY_TASK_SOFT_TIME_LIMIT = 1500  # 25 min soft limit
+# Time-limits are env-driven so prod / dev / local can pick different bounds
+# without a code change. Soft limit raises SoftTimeLimitExceeded so tasks
+# can clean up; hard limit SIGKILLs the worker thread.
+CELERY_TASK_TIME_LIMIT = _env_int("CELERY_TASK_TIME_LIMIT", "1800")
+CELERY_TASK_SOFT_TIME_LIMIT = _env_int("CELERY_TASK_SOFT_TIME_LIMIT", "1500")
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_REJECT_ON_WORKER_LOST = True
-CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+CELERY_WORKER_PREFETCH_MULTIPLIER = _env_int("CELERY_WORKER_PREFETCH_MULTIPLIER", "1")
 
 # Worker settings
 CELERY_WORKER_POOL = "threads"
 CELERY_WORKER_CONCURRENCY = _env_int("CELERY_WORKER_CONCURRENCY", "4")
 
-# Monitoring events
-CELERY_WORKER_SEND_TASK_EVENTS = True
-CELERY_TASK_SEND_SENT_EVENT = True
+# Monitoring events — toggleable because per-task event emission adds broker
+# overhead under high throughput. Default ON (visibility wins in dev / uat);
+# recommend OFF in prod once Flower / monitoring is replaced by metrics.
+CELERY_WORKER_SEND_TASK_EVENTS = _env_bool("CELERY_SEND_EVENTS", "true")
+CELERY_TASK_SEND_SENT_EVENT = _env_bool("CELERY_SEND_EVENTS", "true")
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
@@ -395,6 +410,14 @@ CELERY_TASK_QUEUES = (
 CELERY_TASK_DEFAULT_QUEUE = "default"
 CELERY_TASK_DEFAULT_ROUTING_KEY = "default"
 
+# Domain apps register their task routes here in AppConfig.ready() — leaving
+# this empty means every task lands in `default` and the priority queues
+# above are declared but unreachable. Example wiring:
+#     CELERY_TASK_ROUTES = {
+#         "accounts.tasks.send_welcome_email": {"queue": "high_priority"},
+#         "reports.tasks.nightly_rollup":       {"queue": "low_priority"},
+#     }
+# See docs/celery-topology.md for the override convention.
 CELERY_TASK_ROUTES = {}
 
 # --------------------------------------------------------------------------

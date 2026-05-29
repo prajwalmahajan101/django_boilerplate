@@ -85,4 +85,4 @@ EXPOSE 8000
 # synchronous partner push); default 130 leaves ~10s headroom over the 120s
 # client timeout so the app times out (and records the failure) before the
 # worker is SIGKILL-ed. Compose files may override GUNICORN_TIMEOUT.
-CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --worker-class gthread --workers ${GUNICORN_WORKERS:-4} --threads ${GUNICORN_THREADS:-4} --timeout ${GUNICORN_TIMEOUT:-130} --graceful-timeout 30"]
+CMD ["sh", "-c", "gunicorn config.wsgi:application --bind 0.0.0.0:8000 --worker-class gthread --workers ${GUNICORN_WORKERS:-4} --threads ${GUNICORN_THREADS:-4} --timeout ${GUNICORN_TIMEOUT:-130} --graceful-timeout 30 --max-requests ${GUNICORN_MAX_REQUESTS:-10000} --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-500} --backlog ${GUNICORN_BACKLOG:-2048}"]
