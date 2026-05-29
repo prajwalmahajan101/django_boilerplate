@@ -60,6 +60,9 @@ you productive fastest.
 - **[adding-a-new-app.md](adding-a-new-app.md)** — step-by-step
   contract for onboarding a new domain app (models, RBAC registration,
   exceptions, resilience, Celery routing, soft-delete).
+- **[decisions/](decisions/)** — Architecture Decision Records (ADRs).
+  Numbered, append-only; start with
+  [`0000-template.md`](decisions/0000-template.md) when adding one.
 
 ## Recommended reading order
 
