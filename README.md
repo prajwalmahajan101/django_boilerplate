@@ -47,13 +47,32 @@ DJANGO_ENV=local python manage.py runserver 0.0.0.0:8000
 
 Open `/api/docs/` for Swagger UI and `/admin/` for the Unfold admin.
 
+## Documentation
+
+- **[docs/architecture.md](docs/architecture.md)** — system overview,
+  layering, encryption, async stack.
+- **[docs/adding-a-new-app.md](docs/adding-a-new-app.md)** —
+  step-by-step contract for onboarding a new domain app.
+- **[docs/data-model.md](docs/data-model.md)** — `BaseModel`,
+  `BaseService[T]`, validation contract, page-size cap.
+- **[CHANGELOG.md](CHANGELOG.md)** — release notes.
+
+Full doc index under [`docs/`](docs/) (resilience, thread-safety,
+exceptions, observability, configuration, dependency management,
+deployment, authentication, audit trail, scalability, Celery
+topology).
+
 ## Renaming for your project
 
 1. Edit `SPECTACULAR_SETTINGS["TITLE"]` and `UNFOLD["SITE_HEADER"]` in
    `config/settings/base.py`.
 2. Extend `apps/core/enums.py` (`Resource` and `Action`) with the
-   nouns your domain owns; mirror the additions in
-   `apps/accounts/backends.py::RBACBackend.MODEL_RESOURCE_MAP`.
+   nouns your domain owns; each new app registers its own
+   `Resource ↔ Model` mappings via
+   `core.rbac_registry.register_resource()` from its
+   `AppConfig.ready()` — no edit to `apps/accounts/backends.py` is
+   required. See
+   [docs/adding-a-new-app.md](docs/adding-a-new-app.md) §3.
 3. Add new apps under `apps/<name>/`; register them in
    `INSTALLED_APPS` and wire their URLs in `config/urls.py`.
 4. Re-run `pip-compile` (or let pre-commit do it) after editing

@@ -1,5 +1,15 @@
 # Architecture
 
+> **Adding a new domain app?** Walk through
+> [adding-a-new-app.md](adding-a-new-app.md) for the step-by-step
+> contract (models, RBAC registration, exceptions, resilience, Celery
+> routing, soft-delete cascade).
+>
+> **Looking for the data-model and service-layer reference?** See
+> [data-model.md](data-model.md) for `BaseModel`, `NamedBaseModel`,
+> `BaseService[T]`, the `Meta(BaseModel.Meta)` inheritance contract,
+> the validation contract, and the page-size cap.
+
 ## System Overview
 
 A Django 6 + DRF service skeleton with vetted infrastructure: typed
@@ -248,7 +258,7 @@ Separation prevents rate limiting operations from evicting application cache ent
 ### Encryption
 
 `EncryptedCharField` is the at-rest encryption primitive (used today on
-`APIKey.encrypted_key`; reuse for any column holding secrets you'd be
+`APIKey.secret`; reuse for any column holding secrets you'd be
 unwilling to dump):
 - Algorithm: Fernet (AES-128-CBC + HMAC-SHA256)
 - Key derivation: SHA256 of `FIELD_ENCRYPTION_KEY` (falls back to `SECRET_KEY` under DEBUG only)

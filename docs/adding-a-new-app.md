@@ -66,6 +66,15 @@ Two coordinated edits — and one call from your `AppConfig.ready()`:
    You do **not** edit `RBACBackend.MODEL_RESOURCE_MAP` — the backend
    reads from the registry, populated by every app's `ready()`. Models
    you omit fall back to denied; that is the safe default, not a bug.
+
+   **Collision policy.** `register_resource` is strict by design:
+   re-registering the same model against a *different* `Resource`
+   raises `ValueError` at `AppConfig.ready()` time and refuses to boot.
+   Re-registering the same model against the *same* resource is a
+   no-op. If two apps legitimately need to claim the same model (e.g.
+   `accounts.user` from both `accounts` and a new `profiles` app),
+   extend `Resource` in `core/enums.py` so each app maps to its own
+   value — the registry never picks a winner silently.
 3. Set `resource = Resource.X` and `action = Action.Y` (or override
    `initial()`) on every view that uses `HasResourcePermission`.
 

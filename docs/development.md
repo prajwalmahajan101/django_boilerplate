@@ -1,5 +1,10 @@
 # Development Guide
 
+> **First time onboarding a new domain app?**
+> [adding-a-new-app.md](adding-a-new-app.md) is the step-by-step
+> contract. **Building on `BaseModel` / `BaseService`?** See
+> [data-model.md](data-model.md) for the reference.
+
 ## Prerequisites
 
 - Docker and Docker Compose

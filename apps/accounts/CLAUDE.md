@@ -9,7 +9,7 @@ Handles all auth (Google OAuth2, JWT, API keys) and RBAC (roles → permissions 
 - **`User`** — extends `AbstractUser`; `email` is `USERNAME_FIELD`; `roles` M2M is the RBAC relation; `has_superuser_role` is a `cached_property` that short-circuits permission checks.
 - **`Role`** — `is_superuser_role` bypasses `HasResourcePermission`; `is_default` is auto-assigned to new OAuth users.
 - **`Permission`** — `(resource, action)` pairs are globally unique. Enums in `core/enums.py`; adding a new resource is an enum edit, no migration.
-- **`APIKey`** — `prefix` (first 8 chars) for fast lookup; full key `EncryptedCharField` compared with `hmac.compare_digest`. `create_key(user, name)` returns `(instance, raw_key)` — raw shown once only.
+- **`APIKey`** — `prefix` (first 8 chars) for fast lookup; full key in `secret`, an `EncryptedCharField` (Fernet at rest; plaintext on read). Compared with `secrets.compare_digest`. `create_key(user, name)` returns `(instance, raw_key)` — raw shown once only.
 
 ## Conventions
 

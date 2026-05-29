@@ -245,7 +245,7 @@ From highest to lowest priority:
 
 One column holds ciphertext under this key today. A rotation must re-encrypt every row:
 
-- `APIKey.encrypted_key` — `apps/accounts/models.py` (issued API keys; keys are also recoverable via re-issue if rotation goes wrong).
+- `APIKey.secret` — `apps/accounts/models.py` (issued API keys; keys are also recoverable via re-issue if rotation goes wrong).
 
 Add additional `EncryptedCharField` columns to this list as new ones land.
 
@@ -283,7 +283,7 @@ Add additional `EncryptedCharField` columns to this list as new ones land.
                row.save(update_fields=[field, 'updated_at'])
 
    reencrypt(Partner, 'auth_cred')
-   reencrypt(APIKey, 'encrypted_key')
+   reencrypt(APIKey, 'secret')
    PY
    )"
    ```
