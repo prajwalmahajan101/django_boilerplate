@@ -117,6 +117,7 @@ If set to `*`, enables `CORS_ALLOW_ALL_ORIGINS=True` (blocked in production).
 | `RATE_LIMIT_GLOBAL` | No | `10000/minute` | Global rate limit |
 | `RATE_LIMIT_FAIL_OPEN` | No | `true` | Allow requests when rate limiter fails |
 | `RATE_LIMIT_ENABLE_HEADERS` | No | `true` | Include X-RateLimit-* headers |
+| `NUM_PROXIES` | No | `0` | Trusted proxy hops in front of the app. DRF throttle ident strips this many entries from `X-Forwarded-For` before bucketing. Set `1` behind nginx, `2` behind ALB + nginx. Default `0` collapses all anon traffic to a single bucket behind any proxy — set this for every prod deploy. |
 
 ### Circuit Breaker
 

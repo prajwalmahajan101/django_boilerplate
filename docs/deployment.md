@@ -177,6 +177,8 @@ Rate limiting zones:
 - `/api/` -- 30 req/s (burst 50)
 - `/admin/` -- 10 req/s (burst 20)
 
+Set `NUM_PROXIES=1` in the app environment whenever traffic enters through nginx — DRF reads `REST_FRAMEWORK["NUM_PROXIES"]` to decide how many `X-Forwarded-For` hops to trust when bucketing throttles. Behind ALB + nginx use `NUM_PROXIES=2`. Without it every anon client shares `REMOTE_ADDR = <proxy-ip>` and `BurstThrottle` / `AuthThrottle` / `AuthEndpointThrottle` collapse into a single bucket.
+
 Security headers on all responses:
 - X-Content-Type-Options: nosniff
 - X-Frame-Options: DENY

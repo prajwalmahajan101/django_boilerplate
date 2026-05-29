@@ -225,6 +225,14 @@ REST_FRAMEWORK = {
         # catches a fast credential-stuffing burst.
         "auth_burst": "5/min",
     },
+    # Number of trusted proxy hops in front of the app. DRF's
+    # ``BaseThrottle.get_ident`` reads this to decide how many entries
+    # to strip from ``X-Forwarded-For`` before bucketing. Default 0 is
+    # safe for local development; behind nginx set ``NUM_PROXIES=1``,
+    # behind ALB + nginx set ``NUM_PROXIES=2``. Without this, every
+    # anon client behind a proxy shares ``REMOTE_ADDR=<proxy-ip>`` and
+    # every anon-IP throttle collapses into a single bucket.
+    "NUM_PROXIES": _env_int("NUM_PROXIES", "0"),
 }
 
 # --------------------------------------------------------------------------

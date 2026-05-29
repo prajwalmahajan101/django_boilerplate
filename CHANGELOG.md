@@ -6,6 +6,16 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- DRF throttle ident now respects proxy hops. Added
+  `REST_FRAMEWORK["NUM_PROXIES"]` (env-driven, default `0`) so
+  `BaseThrottle.get_ident` strips trusted `X-Forwarded-For` entries
+  before bucketing. Without this, every anon client behind nginx
+  shared `REMOTE_ADDR=<proxy-ip>` and `BurstThrottle` /
+  `AuthThrottle` / `AuthEndpointThrottle` collapsed into a single
+  bucket. Set `NUM_PROXIES=1` for nginx, `NUM_PROXIES=2` for
+  ALB + nginx. (ISSUE-029)
+
 ### Added
 - `docs/data-model.md` — reference for `BaseModel`, `NamedBaseModel`,
   `BaseService[T]`, the `Meta(BaseModel.Meta)` inheritance contract,
