@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     "dj_rest_auth.registration",
     # Project apps
     "core",
+    "core.api_log",
     "accounts",
 ]
 
@@ -651,6 +652,29 @@ SECURITY_HEADERS_ENABLED = _env_bool("SECURITY_HEADERS_ENABLED", "true")
 # detected at parse time by Django's own DATA_UPLOAD_MAX_MEMORY_SIZE
 # (RequestDataTooBig). Setting to 0 disables the declared-length check.
 MAX_REQUEST_BODY_BYTES = _env_int("MAX_REQUEST_BODY_BYTES", str(2 * 1024 * 1024))
+
+# --------------------------------------------------------------------------
+# api_log audit pipeline (apps/core/api_log/)
+# --------------------------------------------------------------------------
+# Backend selection: "orm" (default — Django ORM through the
+# FireAndForgetQueue) or "noop" (drops every row; for tests). The
+# queue is bounded by API_LOG_QUEUE_MAX_IN_FLIGHT and drained on
+# worker shutdown by drain_all() (see ADR-0001).
+API_LOG_BACKEND = os.getenv("API_LOG_BACKEND", "orm").strip().lower()
+API_LOG_QUEUE_MAX_IN_FLIGHT = _env_int("API_LOG_QUEUE_MAX_IN_FLIGHT", "1000")
+API_LOG_QUEUE_WORKERS = _env_int("API_LOG_QUEUE_WORKERS", "4")
+API_LOG_MAX_BODY_LEN = _env_int("API_LOG_MAX_BODY_LEN", "4096")
+API_LOG_TTL_DAYS = _env_int("API_LOG_TTL_DAYS", "0")  # 0 = keep forever
+# Header names (case-insensitive) whose values are redacted before
+# persistence. Override per-environment for partner-specific headers.
+API_LOG_SENSITIVE_HEADERS = [
+    "authorization",
+    "cookie",
+    "set-cookie",
+    "x-api-key",
+    "x-auth-token",
+    "proxy-authorization",
+]
 # Comma-separated IP / CIDR allowlist. Default trusts only loopback so the
 # endpoint is harmless even when METRICS_ENABLED is on but the network
 # perimeter is incomplete.
