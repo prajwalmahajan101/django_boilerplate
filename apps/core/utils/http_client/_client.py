@@ -367,6 +367,12 @@ def _do_request(
         status_code=resp.status_code,
         body=body,
         headers=dict(resp.headers),
+        request={
+            "method": method.upper(),
+            "url": url,
+            "headers": dict(headers) if headers else {},
+            "body": json_body,
+        },
     )
 
 

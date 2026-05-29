@@ -40,7 +40,18 @@ def log_outbound(service_name: str) -> Callable[[Callable[..., Any]], Callable[.
                 status_code = None
                 response_body: str | None = None
                 response_headers: dict[str, str] = {}
+                request_headers: dict[str, str] = {}
+                request_body: str | None = None
                 error: dict | None = None
+
+                request_ctx = getattr(result, "request", None) if exc is None else None
+                if isinstance(request_ctx, dict):
+                    url = str(request_ctx.get("url") or "")
+                    method = str(request_ctx.get("method") or "")
+                    hdrs = request_ctx.get("headers")
+                    if isinstance(hdrs, dict):
+                        request_headers = hdrs
+                    request_body = serialize_body(request_ctx.get("body"))
 
                 if exc is not None:
                     error = {
@@ -62,8 +73,8 @@ def log_outbound(service_name: str) -> Callable[[Callable[..., Any]], Callable[.
                     "url": url,
                     "status_code": status_code,
                     "duration_ms": elapsed_ms,
-                    "request_headers": {},
-                    "request_body": None,
+                    "request_headers": redact_headers(request_headers),
+                    "request_body": request_body,
                     "response_headers": redact_headers(response_headers),
                     "response_body": response_body,
                     "error": error,

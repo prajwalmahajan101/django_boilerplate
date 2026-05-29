@@ -27,11 +27,19 @@ class HttpResponse:
     ``bytes`` when the call was made with ``raw_bytes=True`` — used for
     binary downloads (e.g. documents) where JSON/text parsing would
     corrupt the payload.
+
+    ``request`` carries the request side of the round-trip
+    (``method``, ``url``, ``headers``, ``body``) so audit decorators
+    such as :func:`core.api_log.log_outbound` can persist a complete
+    record without re-introspecting the caller's args. Optional for
+    backward compatibility — callers that don't use ``api_log`` can
+    leave it ``None``.
     """
 
     status_code: int
     body: dict | str | bytes | None
     headers: dict
+    request: dict | None = None
 
 
 __all__ = [
