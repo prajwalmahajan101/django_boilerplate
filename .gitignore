@@ -10,6 +10,9 @@ dist/
 .installed.cfg
 *.egg
 
+# Code-review state (local working notes)
+.code_review/
+
 # Virtualenvs
 .venv/
 venv/

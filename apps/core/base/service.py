@@ -171,6 +171,13 @@ class BaseService(ABC, Generic[ModelType]):
 
     @transaction.atomic
     def create(self, data: dict[str, Any], user: Any | None = None) -> ModelType:
+        """Create a new instance. Runs ``full_clean()`` via ``BaseModel.save()``.
+
+        Validation contract: model-level validators fire on every service
+        write. Serializers own request-shape validation; this layer is the
+        second line of defense (e.g. constraints introduced after the
+        serializer was written).
+        """
         data = self.pre_create(data, user)
 
         if user and hasattr(self.model, "created_by"):
@@ -190,6 +197,14 @@ class BaseService(ABC, Generic[ModelType]):
         ignore_conflicts: bool = False,
         validate: bool = True,
     ) -> list[ModelType]:
+        """Bulk insert. Validates explicitly because ``bulk_create`` bypasses ``.save()``.
+
+        Django's ``QuerySet.bulk_create`` skips ``.save()`` entirely, so
+        ``BaseModel.save()``'s ``full_clean()`` does not fire. The explicit
+        loop preserves the same validation contract as the single-row path.
+        Set ``validate=False`` only when you've validated upstream (e.g. a
+        management command that already ran ``full_clean()`` per row).
+        """
         instances = [self.model(**data) for data in data_list]
 
         if validate:
@@ -208,6 +223,10 @@ class BaseService(ABC, Generic[ModelType]):
         user: Any | None = None,
         active_only: bool = True,
     ) -> ModelType | None:
+        """Update a row under ``select_for_update``. Runs ``full_clean()`` via ``BaseModel.save()``.
+
+        See ``create`` for the validation contract — same rules apply.
+        """
         qs = self.get_queryset().select_for_update().filter(pk=pk)
         if active_only:
             qs = qs.filter(is_active=True)
