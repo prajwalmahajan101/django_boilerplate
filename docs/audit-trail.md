@@ -147,6 +147,20 @@ single queryable table, asynchronously, with no request-path latency.
   bounded-cardinality contract from
   [observability.md](observability.md#cardinality-contract) is
   rejected before write.
+- **Persisted-body redaction guarantee** — every `api_logs` row goes
+  through `core.api_log.sanitizers.serialize_body`, which delegates to
+  `core.utils.log_sanitization.sanitize_for_log` *before* JSON
+  encoding. Keys matching the configured `SENSITIVE_PATTERN`
+  (default: `password|secret|token|key|auth|credential|api_key|bearer
+  |jwt`) and the `EXCLUDED_FIELDS` set (default: `password`,
+  `secret_ref`, `api_key`, `private_key`, `access_token`) are masked
+  or dropped at write time. The guarantee covers every call site:
+  inbound request body, inbound response data, outbound request body
+  (via `HttpResponse.request`), outbound response body, and the
+  scalar fields of multipart form uploads. Strings and bytes that
+  parse as JSON are recursively redacted; non-JSON scalars fall
+  through to control-char escaping + length cap. Configuration lives
+  in `LOG_SANITIZATION` in `config/settings/base.py`.
 
 ### Dispatch pipeline
 

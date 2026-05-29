@@ -34,3 +34,6 @@ patterns:
 
   - pattern: 'hmac\.compare_digest'
     replacement: 'API-key comparison uses secrets.compare_digest, not hmac.compare_digest.'
+
+  - pattern: 'bulk_update_by_filter'
+    replacement: 'bulk_update_by_filter was removed from BaseRepository — it bypassed full_clean(), auto_now, updated_by, and signals. Reach through cls._manager().filter(...).update(...) explicitly at the call site if you genuinely need to bypass audit, so reviewers can see the escape hatch.'

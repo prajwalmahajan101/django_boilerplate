@@ -46,10 +46,9 @@ classDiagram
         +filter(...) QuerySet
         +exists(...) bool
         +count(...) int
-        +add(instance) M
-        +add_all(instances) list
-        +update(pk, data) M
-        +bulk_update_by_filter(filters, data)
+        +add(instance, user=None) M
+        +add_all(instances, user=None) list
+        +update(pk, data, user=None) M
         +delete_hard(instance)
         +delete_hard_by_id(pk)
     }
