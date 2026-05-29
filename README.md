@@ -2,14 +2,23 @@
 
 A production-grade Django 6 + DRF starter. Ships with:
 
-- **`apps/core/`** — base classes (`BaseModel`, `BaseService[T]`),
-  typed exception hierarchy + DRF handler, structured response
-  envelopes (`SuccessResponse` / `ErrorResponse` / `PaginatedResponse`),
-  request-id middleware, request/response logging, rate-limit headers,
+- **`apps/core/`** — base classes (`BaseModel`, `BaseService[T]`,
+  opt-in `BaseRepository[M]` / `BaseSchema`), typed exception hierarchy
+  + DRF handler, structured response envelopes (`SuccessResponse` /
+  `ErrorResponse` / `PaginatedResponse`), request-id middleware,
+  request/response logging, rate-limit headers, security-headers /
+  content-length / selective-CORS middleware, healthcheck lifecycle,
   resilience primitives (retry + circuit breaker + Valkey-backed
-  throttles), AWS utilities (boto3 thread-local caches, S3, SES),
-  HTTP client with SSRF guard, log sanitization, cursor + offset
-  pagination, fire-and-forget Celery dispatch, Prometheus-ready
+  throttles with Lua atomic windows), AWS utilities (boto3 thread-local
+  caches, S3, SES), HTTP client with SSRF guard + DNS-rebinding
+  protection, `FernetCipher` free-function crypto + `EncryptedCharField`,
+  `best_effort_atomic` audit-write wrapper, log sanitization,
+  `summarise_body_for_audit` / `serialize_error_body` payload
+  sanitizers, cursor + offset pagination, fire-and-forget Celery
+  dispatch, `@register_task` + `enqueue()` Celery helpers, `@log_inbound`
+  / `@log_outbound` audit decorators with structured `error_messages`
+  catalog, `core.runtime.get_settings`/`require` indirection,
+  `core.testing.reset_all_singletons` test helper, Prometheus-ready
   metrics shim.
 - **`apps/accounts/`** — `User` (email login), `Role` / `Permission`
   RBAC, `APIKey` (prefix-indexed, encrypted at rest), JWT via
