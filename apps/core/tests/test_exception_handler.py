@@ -70,3 +70,63 @@ class EnvelopeShapeTest(SimpleTestCase):
         })
         self.assertFalse(response.data["success"])
         self.assertIsNone(response.data["data"])
+
+
+class OutboundURLNotAllowedClassificationTest(SimpleTestCase):
+    """Regression: SSRF refusal is an infrastructure concern, not a repo one.
+
+    A blanket ``except InfrastructureError`` in the resilience layer
+    must now catch SSRF / allow-list rejections alongside circuit
+    breaker opens. ``except RepositoryError`` must NOT.
+    """
+
+    def test_maps_to_400(self):
+        from core.exceptions.infrastructure import OutboundURLNotAllowedError
+
+        response = api_exception_handler(
+            OutboundURLNotAllowedError("blocked host"), context={}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.data["errors"][0]["code"], "OUTBOUND_URL_NOT_ALLOWED"
+        )
+
+    def test_is_infrastructure_error_not_repository_error(self):
+        from core.exceptions.infrastructure import (
+            InfrastructureError,
+            OutboundURLNotAllowedError,
+        )
+        from core.exceptions.repository import RepositoryError
+
+        exc = OutboundURLNotAllowedError("x")
+        self.assertIsInstance(exc, InfrastructureError)
+        self.assertNotIsInstance(exc, RepositoryError)
+
+    def test_legacy_alias_emits_deprecation_and_resolves(self):
+        import warnings
+
+        from core.exceptions import repository as repo_mod
+        from core.exceptions.infrastructure import OutboundURLNotAllowedError
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            legacy = repo_mod.InvalidOutboundURLError
+        self.assertIs(legacy, OutboundURLNotAllowedError)
+        self.assertTrue(
+            any(issubclass(w.category, DeprecationWarning) for w in caught),
+            f"expected DeprecationWarning, got {[w.category for w in caught]}",
+        )
+
+
+class DecryptionErrorClassificationTest(SimpleTestCase):
+    """``DecryptionError`` is part of the infrastructure family.
+
+    A blanket ``except InfrastructureError`` must catch field-decrypt
+    failures (e.g. wrong FIELD_ENCRYPTION_KEY after rotation).
+    """
+
+    def test_is_infrastructure_error(self):
+        from core.exceptions.infrastructure import InfrastructureError
+        from core.utils.crypto import DecryptionError
+
+        self.assertTrue(issubclass(DecryptionError, InfrastructureError))

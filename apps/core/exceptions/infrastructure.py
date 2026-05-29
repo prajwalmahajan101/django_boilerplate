@@ -160,6 +160,36 @@ class SESException(ExternalServiceError):
     error_code = "SES_ERROR"
 
 
+class OutboundURLNotAllowedError(InfrastructureError):
+    """Raised when an outbound URL fails SSRF / allow-list validation.
+
+    Raised when: the SSRF guard in ``apps/core/utils/http_client/_client.py``
+        rejects a URL because the scheme is not http(s), the hostname
+        is missing, DNS does not resolve (strict mode), the resolved
+        address is non-public (RFC1918, loopback, link-local, etc.),
+        or the host is not in ``OUTBOUND_URL_ALLOWLIST``.
+    Maps to: HTTP 400 — the default assumes the URL ultimately came
+        from caller-supplied input (request payload, admin form),
+        making 400 the right code. Services that pass an internally
+        configured URL and want 502 instead can raise with
+        ``status_code=502`` on the spot, or register a different code
+        in their ``AppConfig.ready()``.
+    Error code: ``OUTBOUND_URL_NOT_ALLOWED``.
+    Typical caller: ``_assert_url_allowlisted`` and ``_assert_public_url``
+        in ``apps/core/utils/http_client/_client.py``.
+
+    Classified under :class:`InfrastructureError` (not the repository
+    family) because the failure originates in the outbound-call layer,
+    not in data access. A blanket ``except InfrastructureError`` now
+    catches SSRF refusals alongside circuit-breaker opens and external
+    timeouts, which is the right blast radius for resilience-layer
+    fallbacks.
+    """
+
+    default_message = "Outbound URL is not allowed."
+    error_code = "OUTBOUND_URL_NOT_ALLOWED"
+
+
 class PartnerPushError(ExternalServiceError):
     """Raised when pushing lead data to a partner API fails.
 

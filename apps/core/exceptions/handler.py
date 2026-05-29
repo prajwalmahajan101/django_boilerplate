@@ -10,6 +10,7 @@ from core.context import get_request_id
 from core.exceptions.infrastructure import (
     ExternalServiceError,
     ExternalTimeoutError,
+    OutboundURLNotAllowedError,
     S3Exception,
     ServiceUnavailableError,
     SESException,
@@ -18,7 +19,6 @@ from core.exceptions.repository import (
     EntityNotFoundError,
     InactiveParentError,
     InvalidInputError,
-    InvalidOutboundURLError,
 )
 from rest_framework import status
 from rest_framework.response import Response
@@ -191,8 +191,8 @@ register_exception_mapping(SESException, status.HTTP_502_BAD_GATEWAY)
 register_exception_mapping(
     ExternalServiceError, status.HTTP_502_BAD_GATEWAY
 )  # parent class — must be last
+register_exception_mapping(OutboundURLNotAllowedError, status.HTTP_400_BAD_REQUEST)
 register_exception_mapping(InactiveParentError, status.HTTP_409_CONFLICT)
-register_exception_mapping(InvalidOutboundURLError, status.HTTP_400_BAD_REQUEST)
 register_exception_mapping(InvalidInputError, status.HTTP_400_BAD_REQUEST)
 
 # The map is cached lazily on first call to _get_status_map(). Any later

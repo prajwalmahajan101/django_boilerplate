@@ -7,7 +7,7 @@ Public surface (re-exported here for backwards-compatible imports):
 * :class:`AuthType`, :func:`build_headers` — auth helpers for non-Basic
   flows; ``requests`` handles Basic via the ``auth=`` tuple.
 * :class:`ExternalTimeoutError`, :class:`TransientError`,
-  :class:`InvalidOutboundURLError` — typed exceptions the client raises.
+  :class:`OutboundURLNotAllowedError` — typed exceptions the client raises.
 
 Private SSRF / DNS-pin internals (``_resolve_and_validate``,
 ``_assert_url_allowlisted``, ``_pinned_dns``, ``_orig_getaddrinfo``)
@@ -33,7 +33,7 @@ from core.utils.http_client._client import (
 from core.utils.http_client._errors import (
     ExternalTimeoutError,
     HttpResponse,
-    InvalidOutboundURLError,
+    OutboundURLNotAllowedError,
     TransientError,
 )
 from core.utils.http_client._session import get_session
@@ -42,7 +42,7 @@ __all__ = [
     "AuthType",
     "ExternalTimeoutError",
     "HttpResponse",
-    "InvalidOutboundURLError",
+    "OutboundURLNotAllowedError",
     "TransientError",
     "_assert_public_url",
     "_assert_url_allowlisted",

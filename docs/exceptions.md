@@ -40,8 +40,8 @@ classDiagram
 
     RepositoryError <|-- EntityNotFoundError
     RepositoryError <|-- InactiveParentError
-    RepositoryError <|-- InvalidOutboundURLError
     RepositoryError <|-- InvalidInputError
+    InfrastructureError <|-- OutboundURLNotAllowedError
     RepositoryError <|-- AssetUploadValidationError
     RepositoryError <|-- InvalidAttachmentTargetError
     RepositoryError <|-- PartnerAuthConfigError
@@ -77,7 +77,7 @@ Default mapping (registered in `apps/core/exceptions/handler.py`):
 |---|---|---|
 | `EntityNotFoundError` | 404 | |
 | `InactiveParentError` | 409 | |
-| `InvalidOutboundURLError` | 400 | SSRF guard / allow-list rejections |
+| `OutboundURLNotAllowedError` | 400 | SSRF guard / allow-list rejections (infrastructure family) |
 | `InvalidInputError` | 400 | Bad input to core/utils helpers |
 | `ServiceUnavailableError` | 503 | Circuit breaker open |
 | `ExternalTimeoutError` | 502 | |
@@ -191,7 +191,7 @@ and `handler.py:169` (`register_exception_mapping`).
 |---|---|
 | Single-row lookup returned no result | `EntityNotFoundError(entity_name, entity_id)` |
 | Activating a row whose parent is inactive | `InactiveParentError("…")` |
-| Outbound URL failed SSRF / allow-list check | `InvalidOutboundURLError("…")` |
+| Outbound URL failed SSRF / allow-list check | `OutboundURLNotAllowedError("…")` (from `core.exceptions.infrastructure`) |
 | Invalid input to a shared core/utils helper (S3 URI, filter coercion, oversized string) | `InvalidInputError("…")` |
 | Cache backend cannot bump a version counter | `CacheVersionError("…")` |
 | Generic data-access invariant broken | `RepositoryError` subclass |
@@ -262,7 +262,7 @@ and `handler.py:169` (`register_exception_mapping`).
   `status_code=4xx` for an ad-hoc rule violation or define a typed
   subclass. Recurring inline `status_code=` overrides should be promoted
   to a registered subclass — that's what the SSRF guard's six 400s
-  became (`InvalidOutboundURLError`).
+  became (`OutboundURLNotAllowedError`).
 * **Subclass `__init__` that drops `status_code`.** When overriding
   `__init__` on a `BaseCustomError` subclass, always accept and forward
   `*, status_code: int | None = None` to `super().__init__`. Dropping

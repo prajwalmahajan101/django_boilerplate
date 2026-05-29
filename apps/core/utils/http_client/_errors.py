@@ -1,10 +1,9 @@
 """Response shape + error re-exports for the outbound HTTP client.
 
 The typed exception hierarchy lives in
-:mod:`core.exceptions.infrastructure` and
-:mod:`core.exceptions.repository`; this module re-exports the ones the
-client raises so import sites can pull both the response dataclass and
-the matching exception types from one place::
+:mod:`core.exceptions.infrastructure`; this module re-exports the ones
+the client raises so import sites can pull both the response dataclass
+and the matching exception types from one place::
 
     from core.utils.http_client import HttpResponse, TransientError
 """
@@ -13,8 +12,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.exceptions.infrastructure import ExternalTimeoutError, TransientError
-from core.exceptions.repository import InvalidOutboundURLError
+from core.exceptions.infrastructure import (
+    ExternalTimeoutError,
+    OutboundURLNotAllowedError,
+    TransientError,
+)
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,6 @@ class HttpResponse:
 __all__ = [
     "ExternalTimeoutError",
     "HttpResponse",
-    "InvalidOutboundURLError",
+    "OutboundURLNotAllowedError",
     "TransientError",
 ]

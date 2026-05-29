@@ -91,24 +91,6 @@ class InactiveParentError(RepositoryError):
         super().__init__(message or self.default_message, status_code=status_code)
 
 
-class InvalidOutboundURLError(RepositoryError):
-    """Raised when an outbound URL fails SSRF / allow-list validation.
-
-    Raised when: the SSRF guard in ``apps/core/utils/http_client.py``
-        rejects a URL because the scheme is not http(s), the hostname
-        is missing, DNS does not resolve (strict mode), the resolved
-        address is non-public (RFC1918, loopback, link-local, etc.),
-        or the host is not in ``OUTBOUND_URL_ALLOWLIST``.
-    Maps to: HTTP 400 (registered in ``handler.py``).
-    Error code: ``INVALID_OUTBOUND_URL``.
-    Typical caller: ``_assert_url_allowlisted`` and ``_assert_public_url``
-        in ``apps/core/utils/http_client.py``.
-    """
-
-    default_message = "Outbound URL is not allowed."
-    error_code = "INVALID_OUTBOUND_URL"
-
-
 class InvalidInputError(RepositoryError):
     """Raised when a caller passes structurally invalid input to a core utility.
 
@@ -123,3 +105,27 @@ class InvalidInputError(RepositoryError):
 
     default_message = "Invalid input."
     error_code = "INVALID_INPUT"
+
+
+def __getattr__(name: str):
+    """Module-level ``__getattr__`` for one-cycle deprecation aliases.
+
+    ``InvalidOutboundURLError`` moved to ``core.exceptions.infrastructure``
+    as ``OutboundURLNotAllowedError`` — SSRF refusal is an infra concern,
+    not a data-access one. The old import path still resolves, emitting a
+    ``DeprecationWarning`` once per call site.
+    """
+    if name == "InvalidOutboundURLError":
+        import warnings
+
+        from core.exceptions.infrastructure import OutboundURLNotAllowedError
+
+        warnings.warn(
+            "InvalidOutboundURLError moved to "
+            "core.exceptions.infrastructure.OutboundURLNotAllowedError. "
+            "Update the import.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return OutboundURLNotAllowedError
+    raise AttributeError(f"module 'core.exceptions.repository' has no attribute {name!r}")

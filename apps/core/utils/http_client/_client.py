@@ -36,7 +36,7 @@ from tenacity import (
 from core.utils.http_client._errors import (
     ExternalTimeoutError,
     HttpResponse,
-    InvalidOutboundURLError,
+    OutboundURLNotAllowedError,
     TransientError,
 )
 from core.utils.http_client._session import get_session
@@ -74,7 +74,7 @@ def _assert_url_allowlisted(url: str) -> None:
         return
     host = (urlparse(url).hostname or "").lower()
     if not host:
-        raise InvalidOutboundURLError("URL has no hostname.")
+        raise OutboundURLNotAllowedError("URL has no hostname.")
     for entry in allow:
         entry = entry.lower()
         if entry.startswith("."):
@@ -82,7 +82,7 @@ def _assert_url_allowlisted(url: str) -> None:
                 return
         elif host == entry:
             return
-    raise InvalidOutboundURLError(
+    raise OutboundURLNotAllowedError(
         f"Outbound URL host '{host}' is not in OUTBOUND_URL_ALLOWLIST."
     )
 
@@ -125,12 +125,12 @@ def _resolve_and_validate(
 
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
-        raise InvalidOutboundURLError(
+        raise OutboundURLNotAllowedError(
             f"URL scheme '{parsed.scheme}' is not allowed (only http/https)."
         )
     host = parsed.hostname
     if not host:
-        raise InvalidOutboundURLError("URL has no hostname.")
+        raise OutboundURLNotAllowedError("URL has no hostname.")
 
     try:
         literal = ipaddress.ip_address(host)
@@ -140,7 +140,7 @@ def _resolve_and_validate(
             addrs = list({info[4][0] for info in socket.getaddrinfo(host, None)})
         except socket.gaierror as exc:
             if strict:
-                raise InvalidOutboundURLError(
+                raise OutboundURLNotAllowedError(
                     f"URL hostname '{host}' could not be resolved."
                 ) from exc
             logger.info(
@@ -159,7 +159,7 @@ def _resolve_and_validate(
             or ip.is_unspecified
             or ip.is_multicast
         ):
-            raise InvalidOutboundURLError(
+            raise OutboundURLNotAllowedError(
                 f"URL resolves to a non-public address ({addr})."
             )
     return host, addrs
@@ -262,7 +262,7 @@ def make_http_request(
     Raises:
         TransientError: On HTTP 5xx responses or connection errors.
         ExternalTimeoutError: On request timeouts.
-        InvalidOutboundURLError: On SSRF or allow-list rejection.
+        OutboundURLNotAllowedError: On SSRF or allow-list rejection.
     """
     if max_attempts < 1:
         max_attempts = 1
