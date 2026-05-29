@@ -118,16 +118,13 @@ def settings_override(settings):
 
 @pytest.fixture(autouse=True)
 def _clear_caches():
-    """Clear Django + DRF in-memory caches between tests.
+    """Reset process-level singletons between tests.
 
-    Prevents bleed of throttle / permission / breaker state between
-    test cases on the same process.
+    Prevents bleed of cache / throttle / breaker / queue / Fernet
+    state between test cases on the same process. Single source of
+    truth lives in ``core.testing.reset_all_singletons``.
     """
-    from django.core.cache import caches
+    from core.testing import reset_all_singletons
 
     yield
-    for cache in caches.all():
-        try:
-            cache.clear()
-        except Exception:  # noqa: BLE001 — some backends raise on .clear()
-            pass
+    reset_all_singletons()
