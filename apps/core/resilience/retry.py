@@ -53,13 +53,17 @@ exception is re-raised (``reraise=True``).
 """
 
 import functools
+import threading
 from typing import Any
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 # Cache built decorators per service to preserve Tenacity's internal
-# backoff state across invocations (ISSUE-045).
+# backoff state across invocations (ISSUE-045). Locked via
+# double-checked locking — matches the engine-cache pattern and the
+# thread-safety contract in docs/thread-safety.md.
 _retry_cache: dict[str, Any] = {}
+_retry_cache_lock = threading.Lock()
 
 
 def retry_on_failure(service_name: str):
@@ -82,9 +86,10 @@ def retry_on_failure(service_name: str):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            # Return cached decorator if available (preserves backoff state).
-            if service_name in _retry_cache:
-                return _retry_cache[service_name](func)(*args, **kwargs)
+            # Fast path: cached decorator (preserves backoff state).
+            cached = _retry_cache.get(service_name)
+            if cached is not None:
+                return cached(func)(*args, **kwargs)
 
             from core.exceptions.infrastructure import ServiceUnavailableError
             from core.resilience.registry import registry
@@ -101,17 +106,21 @@ def retry_on_failure(service_name: str):
             if not exception_classes:
                 return func(*args, **kwargs)
 
-            retry_decorator = retry(
-                stop=stop_after_attempt(config["max_attempts"]),
-                wait=wait_exponential(
-                    min=config["wait_min"],
-                    max=config["wait_max"],
-                ),
-                retry=retry_if_exception_type(exception_classes),
-                reraise=True,
-            )
-
-            _retry_cache[service_name] = retry_decorator
+            # Slow path: build under lock with double-checked locking.
+            with _retry_cache_lock:
+                cached = _retry_cache.get(service_name)
+                if cached is None:
+                    cached = retry(
+                        stop=stop_after_attempt(config["max_attempts"]),
+                        wait=wait_exponential(
+                            min=config["wait_min"],
+                            max=config["wait_max"],
+                        ),
+                        retry=retry_if_exception_type(exception_classes),
+                        reraise=True,
+                    )
+                    _retry_cache[service_name] = cached
+            retry_decorator = cached
             return retry_decorator(func)(*args, **kwargs)
 
         return wrapper

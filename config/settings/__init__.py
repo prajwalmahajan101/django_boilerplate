@@ -6,11 +6,16 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Add apps/ to the Python path (inline — cannot import config._path_setup
-# because it triggers config/__init__.py → circular celery import).
+# --- apps/ on sys.path (ISSUE-011) ------------------------------------------
+# This block is duplicated verbatim in config/celery.py. It cannot be
+# extracted to a shared helper because config/__init__.py imports celery,
+# so any `from config._x import …` here would re-enter config/__init__.py
+# → circular import. Keep both copies identical; if you change this block,
+# change the sibling at config/celery.py too.
 _apps_dir = str(Path(__file__).resolve().parent.parent.parent / "apps")
 if _apps_dir not in _sys.path:
     _sys.path.insert(0, _apps_dir)
+# ----------------------------------------------------------------------------
 
 # DJANGO_ENV must be explicitly set — no default.
 env = os.getenv("DJANGO_ENV")

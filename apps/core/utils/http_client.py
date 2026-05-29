@@ -169,7 +169,11 @@ def _assert_public_url(url: str, *, strict: bool = True) -> None:
             )
 
 # Cache built retry decorators by max_attempts to preserve Tenacity state.
+# Locked via double-checked locking — matches the _engine_cache pattern
+# in apps/core/utils/db.py and the thread-safety contract in
+# docs/thread-safety.md.
 _retry_cache: dict[int, Any] = {}
+_retry_cache_lock = threading.Lock()
 
 # Thread-local session for connection pooling (one per thread).
 _thread_local = threading.local()
@@ -251,15 +255,22 @@ def make_http_request(
     # sanctioned-destination list and must apply to trusted call sites too.
     _assert_url_allowlisted(url)
 
-    if max_attempts not in _retry_cache:
-        _retry_cache[max_attempts] = retry(
-            stop=stop_after_attempt(max_attempts),
-            wait=wait_exponential(min=1, max=10),
-            retry=retry_if_exception_type((TransientError, ExternalTimeoutError)),
-            reraise=True,
-        )
+    decorator = _retry_cache.get(max_attempts)
+    if decorator is None:
+        with _retry_cache_lock:
+            decorator = _retry_cache.get(max_attempts)
+            if decorator is None:
+                decorator = retry(
+                    stop=stop_after_attempt(max_attempts),
+                    wait=wait_exponential(min=1, max=10),
+                    retry=retry_if_exception_type(
+                        (TransientError, ExternalTimeoutError)
+                    ),
+                    reraise=True,
+                )
+                _retry_cache[max_attempts] = decorator
 
-    return _retry_cache[max_attempts](_do_request)(
+    return decorator(_do_request)(
         method, url, headers, json_body, timeout, auth, raw_bytes
     )
 

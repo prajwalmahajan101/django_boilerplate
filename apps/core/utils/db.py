@@ -15,6 +15,7 @@ Usage:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from dataclasses import dataclass, field
 from threading import Lock
@@ -108,8 +109,16 @@ def build_url(
 # Engine management
 # ---------------------------------------------------------------------------
 
+# The cache is keyed by SHA-256 of the URL so the embedded password
+# never sits in memory as plaintext keyspace (ISSUE-007). ``_url_for_log``
+# stores the masked URL per key so log / dispose messages stay readable.
 _engine_cache: dict[str, Any] = {}
+_url_for_log: dict[str, str] = {}
 _engine_cache_lock = Lock()
+
+
+def _cache_key(url: str) -> str:
+    return hashlib.sha256(url.encode()).hexdigest()
 
 
 def get_engine(url: str, **kwargs: Any):
@@ -118,12 +127,13 @@ def get_engine(url: str, **kwargs: Any):
     Additional ``**kwargs`` are forwarded to ``create_engine`` only on first
     call for a given URL (subsequent calls return the cached instance).
     """
-    cached = _engine_cache.get(url)
+    key = _cache_key(url)
+    cached = _engine_cache.get(key)
     if cached is not None:
         return cached
 
     with _engine_cache_lock:
-        if url not in _engine_cache:
+        if key not in _engine_cache:
             from sqlalchemy import create_engine
 
             defaults: dict[str, Any] = {
@@ -137,19 +147,23 @@ def get_engine(url: str, **kwargs: Any):
             }
             defaults.update(kwargs)
 
-            logger.info("Creating SQLAlchemy engine for %s", _mask_url(url))
-            _engine_cache[url] = create_engine(url, **defaults)
-        return _engine_cache[url]
+            masked = _mask_url(url)
+            logger.info("Creating SQLAlchemy engine for %s", masked)
+            _engine_cache[key] = create_engine(url, **defaults)
+            _url_for_log[key] = masked
+        return _engine_cache[key]
 
 
 def dispose_engine(url: str) -> None:
     """Dispose a single engine by URL and remove it from the cache."""
+    key = _cache_key(url)
     with _engine_cache_lock:
-        engine = _engine_cache.pop(url, None)
+        engine = _engine_cache.pop(key, None)
+        masked = _url_for_log.pop(key, _mask_url(url))
 
     if engine is not None:
         engine.dispose()
-        logger.info("Disposed SQLAlchemy engine for %s", _mask_url(url))
+        logger.info("Disposed SQLAlchemy engine for %s", masked)
 
 
 def dispose_all_engines() -> None:
@@ -157,6 +171,7 @@ def dispose_all_engines() -> None:
     with _engine_cache_lock:
         engines = list(_engine_cache.values())
         _engine_cache.clear()
+        _url_for_log.clear()
 
     for engine in engines:
         engine.dispose()

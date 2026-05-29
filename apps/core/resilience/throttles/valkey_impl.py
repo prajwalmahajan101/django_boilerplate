@@ -54,6 +54,14 @@ class ValkeyRateThrottle(SimpleRateThrottle):
     _shared_valkey_client = None
     _shared_valkey_client_lock = Lock()
 
+    # Once-per-process WARNING when Lua script load fails. DRF instantiates
+    # throttles per request, so a noisy log without this guard would log
+    # the same failure on every request. ``_lua_failure_warned`` is set
+    # only after the first failure logs; the recovery monitor can reset
+    # it via ``reset_lua_state()`` once Valkey is reachable again.
+    _lua_failure_warned = False
+    _lua_warning_lock = Lock()
+
     def __init__(self) -> None:
         self._init_cache()
         self._init_lua_script()
@@ -93,8 +101,41 @@ class ValkeyRateThrottle(SimpleRateThrottle):
         try:
             client = self._get_valkey_client()
             self._lua_script_sha = client.script_load(THROTTLE_LUA_SCRIPT)
-        except Exception:
-            pass
+        except Exception as exc:
+            self._warn_lua_load_failed_once(exc)
+
+    @classmethod
+    def _warn_lua_load_failed_once(cls, exc: Exception) -> None:
+        """Emit a single WARNING the first time Lua load fails per process.
+
+        Without this guard, DRF's per-request throttle instantiation would
+        log the same failure on every request. The flag is reset via
+        ``reset_lua_state()`` so the recovery monitor (or a readiness
+        probe) can re-warn once Valkey recovers and fails again.
+        """
+        if cls._lua_failure_warned:
+            return
+        with cls._lua_warning_lock:
+            if cls._lua_failure_warned:
+                return
+            logger.warning(
+                "Valkey throttle Lua script load failed; "
+                "falling back to non-atomic rate limiting. error=%s",
+                str(exc),
+                extra={"subsystem": "throttle"},
+            )
+            cls._lua_failure_warned = True
+
+    @classmethod
+    def reset_lua_state(cls) -> None:
+        """Clear the once-per-process WARNING gate.
+
+        Called by the recovery monitor after Valkey returns so the next
+        failure re-emits the WARNING instead of being swallowed by the
+        gate.
+        """
+        with cls._lua_warning_lock:
+            cls._lua_failure_warned = False
 
     def _get_user_or_ip_ident(self, request: HttpRequest) -> str:
         return get_user_or_ip_ident(request, self.get_ident)
