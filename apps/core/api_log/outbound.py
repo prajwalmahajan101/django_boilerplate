@@ -66,7 +66,14 @@ def log_outbound(service_name: str) -> Callable[[Callable[..., Any]], Callable[.
                     "extra": {},
                 }
 
-            return capture_and_dispatch(fn, args, kwargs, build_row)
+            return capture_and_dispatch(
+                fn,
+                args,
+                kwargs,
+                build_row,
+                service_name=service_name,
+                direction=Direction.OUTBOUND,
+            )
 
         return wrapper
 
