@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from django.contrib.auth.backends import ModelBackend
 
-from core.enums import Action, Resource
+from core.enums import Action
+from core.rbac_registry import app_resources, resource_for
 
 
 class RBACBackend(ModelBackend):
@@ -15,8 +16,10 @@ class RBACBackend(ModelBackend):
     and checks the User -> Roles -> Permissions chain.
 
     Superuser-role holders bypass all checks.
-    Models not in MODEL_RESOURCE_MAP fall back to denied (safe default).
-    Extend MODEL_RESOURCE_MAP per-domain when you add new apps.
+    Models without a registered Resource fall back to denied (safe
+    default). Domain apps register their own mappings via
+    ``core.rbac_registry.register_resource()`` from ``AppConfig.ready()``
+    — no edit to this file is needed when adding a new app.
     """
 
     # Django perm prefix -> our Action enum
@@ -25,14 +28,6 @@ class RBACBackend(ModelBackend):
         "add": Action.CREATE,
         "change": Action.UPDATE,
         "delete": Action.DELETE,
-    }
-
-    # "app_label.model_name" -> Resource enum value
-    MODEL_RESOURCE_MAP: dict[str, str] = {
-        "accounts.user": Resource.ACCOUNT,
-        "accounts.role": Resource.ROLE,
-        "accounts.permission": Resource.ROLE,
-        "accounts.apikey": Resource.API_KEY,
     }
 
     def has_perm(self, user_obj, perm, obj=None):
@@ -55,7 +50,7 @@ class RBACBackend(ModelBackend):
             return False
 
         action = self.PERM_ACTION_MAP.get(action_prefix)
-        resource = self.MODEL_RESOURCE_MAP.get(f"{app_label}.{model_name}")
+        resource = resource_for(app_label, model_name)
 
         if not action or not resource:
             return False
@@ -76,15 +71,10 @@ class RBACBackend(ModelBackend):
         if getattr(user_obj, "has_superuser_role", False):
             return True
 
-        app_resources = [
-            resource
-            for key, resource in self.MODEL_RESOURCE_MAP.items()
-            if key.startswith(f"{app_label}.")
-        ]
-
-        if not app_resources:
+        resources = app_resources(app_label)
+        if not resources:
             return False
 
         return user_obj.roles.filter(
-            permissions__resource__in=app_resources,
+            permissions__resource__in=resources,
         ).exists()

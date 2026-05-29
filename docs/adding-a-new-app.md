@@ -47,17 +47,25 @@ rows.
 
 ## 3. RBAC
 
-Three coordinated edits in `apps/core/enums.py` and
-`apps/accounts/backends.py`:
+Two coordinated edits — and one call from your `AppConfig.ready()`:
 
 1. Extend `Resource` in `core/enums.py` with one entry per top-level
-   resource your app owns (matches the right-hand side of `has_perm`).
-   Actions (`CREATE`, `READ`, `UPDATE`, `DELETE`) almost never need
-   extending.
-2. Extend `RBACBackend.MODEL_RESOURCE_MAP` in `accounts/backends.py` with
-   `"<app_label>.<model_name>"` → `Resource.X` for every model that
-   needs admin / DRF permission checks. Models you omit fall back to
-   denied — that is the safe default, not a bug.
+   resource your app owns. Actions (`CREATE`, `READ`, `UPDATE`,
+   `DELETE`) almost never need extending.
+2. Register each of your models against the right resource from
+   `apps/my_app/apps.py::ready()`:
+
+   ```python
+   from core.enums import Resource
+   from core.rbac_registry import register_resource
+
+   register_resource("my_app.foo", Resource.FOO)
+   register_resource("my_app.bar", Resource.BAR)
+   ```
+
+   You do **not** edit `RBACBackend.MODEL_RESOURCE_MAP` — the backend
+   reads from the registry, populated by every app's `ready()`. Models
+   you omit fall back to denied; that is the safe default, not a bug.
 3. Set `resource = Resource.X` and `action = Action.Y` (or override
    `initial()`) on every view that uses `HasResourcePermission`.
 

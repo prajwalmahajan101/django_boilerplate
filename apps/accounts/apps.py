@@ -16,7 +16,9 @@ class AccountsConfig(AppConfig):
             InvalidTimezoneError,
             NoFieldsToUpdateError,
         )
+        from core.enums import Resource
         from core.exceptions.handler import register_exception_mapping
+        from core.rbac_registry import register_resource
 
         register_exception_mapping(
             NoFieldsToUpdateError, status.HTTP_400_BAD_REQUEST
@@ -27,3 +29,13 @@ class AccountsConfig(AppConfig):
         register_exception_mapping(
             APIKeyGenerationError, status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+        # RBAC: this used to be RBACBackend.MODEL_RESOURCE_MAP, a hardcoded
+        # dict in apps/accounts/backends.py. Moving the registration here
+        # means a new domain app drops in next to accounts/ and registers
+        # its own resources from its own AppConfig.ready() — no edit to
+        # the auth backend required.
+        register_resource("accounts.user", Resource.ACCOUNT)
+        register_resource("accounts.role", Resource.ROLE)
+        register_resource("accounts.permission", Resource.ROLE)
+        register_resource("accounts.apikey", Resource.API_KEY)
