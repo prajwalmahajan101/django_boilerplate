@@ -5,7 +5,6 @@ import logging
 from typing import Any
 
 from django.conf import settings
-from django.db import connection
 from django.http import HttpResponse
 from django.views.decorators.cache import never_cache
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -14,10 +13,38 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from core.api_schemas import health_schema, readiness_schema
+from core.lifecycle.healthcheck import (
+    HealthCheckResult,
+    cache_check,
+    celery_broker_check,
+    db_check,
+    run_checks,
+)
 from core.resilience.throttles import BurstThrottle
-from core.utils.log_sanitization import safe_log_dict
 
 logger = logging.getLogger(__name__)
+
+
+def _is_privileged(request: Request) -> bool:
+    return hasattr(request, "user") and getattr(
+        request.user, "has_superuser_role", False
+    )
+
+
+def _short(result: HealthCheckResult) -> str:
+    """Short status string for the unprivileged checks dict."""
+    if result.healthy:
+        return "connected"
+    return "disconnected" if "database" in result.name else "unreachable"
+
+
+def _attach_checks(
+    payload: dict[str, Any],
+    results: list[HealthCheckResult],
+    privileged: bool,
+) -> None:
+    if privileged:
+        payload["checks"] = {r.name: r.detail or _short(r) for r in results}
 
 
 @health_schema
@@ -28,32 +55,14 @@ logger = logging.getLogger(__name__)
 def health_check(request: Request) -> Response:
     """Health check endpoint for load balancers and monitoring.
 
-    Checks database connectivity.
+    Composes :func:`core.lifecycle.healthcheck.db_check`. The privileged
+    response surfaces per-check detail; the unprivileged response is a
+    single ``status`` field.
     """
-    health_status: dict[str, Any] = {
-        "status": "healthy",
-    }
-    status_code = 200
-    is_privileged = hasattr(request, "user") and getattr(request.user, "has_superuser_role", False)
-
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-        if is_privileged:
-            health_status.setdefault("checks", {})["database"] = "connected"
-    except Exception as e:
-        logger.error(
-            "Database health check failed",
-            exc_info=True,
-            extra=safe_log_dict(original_error=str(e)),
-        )
-        if is_privileged:
-            health_status.setdefault("checks", {})["database"] = "disconnected"
-        health_status["status"] = "unhealthy"
-        status_code = 503
-
-    return Response(health_status, status=status_code)
+    results, healthy = run_checks([db_check])
+    payload: dict[str, Any] = {"status": "healthy" if healthy else "unhealthy"}
+    _attach_checks(payload, results, _is_privileged(request))
+    return Response(payload, status=200 if healthy else 503)
 
 
 @readiness_schema
@@ -64,87 +73,16 @@ def health_check(request: Request) -> Response:
 def readiness_check(request: Request) -> Response:
     """Readiness check for Kubernetes/orchestration systems.
 
-    Checks database, Valkey cache, and Celery broker connectivity.
+    Composes DB + cache + Celery-broker probes from
+    :mod:`core.lifecycle.healthcheck`. Cache probe drives
+    ``attempt_recover_all()`` on success so any BOOT_FALLBACK backend is
+    rebuilt — that state cannot recover via the in-call resilience
+    probe and the readiness endpoint is the documented trigger.
     """
-    readiness_status: dict[str, Any] = {
-        "status": "ready",
-    }
-    status_code = 200
-    is_privileged = hasattr(request, "user") and getattr(request.user, "has_superuser_role", False)
-    checks: dict[str, str] = {}
-
-    # Check database connectivity
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-        checks["database"] = "connected"
-    except Exception as e:
-        logger.error(
-            "Database readiness check failed",
-            exc_info=True,
-            extra=safe_log_dict(original_error=str(e)),
-        )
-        checks["database"] = "disconnected"
-        readiness_status["status"] = "not_ready"
-        status_code = 503
-
-    # Check Valkey cache connectivity. On success, drive recovery for any
-    # backend currently in BOOT_FALLBACK — that state can't recover via
-    # in-call probe alone (the backend object never had a Valkey client to
-    # reconnect) and the readiness probe is the documented recovery trigger.
-    try:
-        from django.core.cache import cache
-
-        cache.set("_readiness_check", "ok", timeout=5)
-        if cache.get("_readiness_check") == "ok":
-            checks["cache"] = "connected"
-            try:
-                from core.resilience.recovery import attempt_recover_all
-
-                recovered = attempt_recover_all()
-                if recovered:
-                    checks["cache_recovered"] = str(recovered)
-            except Exception:  # noqa: BLE001
-                logger.exception("readiness recovery dispatch failed")
-        else:
-            checks["cache"] = "unreachable"
-            readiness_status["status"] = "not_ready"
-            status_code = 503
-    except Exception as e:
-        logger.error(
-            "Cache readiness check failed",
-            exc_info=True,
-            extra=safe_log_dict(original_error=str(e)),
-        )
-        checks["cache"] = "disconnected"
-        readiness_status["status"] = "not_ready"
-        status_code = 503
-
-    # Check Celery broker connectivity
-    try:
-        from config.celery import app as celery_app
-
-        conn = celery_app.connection()
-        try:
-            conn.ensure_connection(max_retries=1, timeout=3)
-        finally:
-            conn.close()
-        checks["celery_broker"] = "connected"
-    except Exception as e:
-        logger.error(
-            "Celery broker readiness check failed",
-            exc_info=True,
-            extra=safe_log_dict(original_error=str(e)),
-        )
-        checks["celery_broker"] = "disconnected"
-        readiness_status["status"] = "not_ready"
-        status_code = 503
-
-    if is_privileged:
-        readiness_status["checks"] = checks
-
-    return Response(readiness_status, status=status_code)
+    results, healthy = run_checks([db_check, cache_check, celery_broker_check])
+    payload: dict[str, Any] = {"status": "ready" if healthy else "not_ready"}
+    _attach_checks(payload, results, _is_privileged(request))
+    return Response(payload, status=200 if healthy else 503)
 
 
 @api_view(["POST"])
