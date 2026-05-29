@@ -101,6 +101,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "core.middleware.security_headers.SecurityHeadersMiddleware",
+    "core.middleware.body_limit.ContentLengthLimitMiddleware",
     "core.middleware.request_id.RequestIDMiddleware",
     "core.middleware.exception_logging.ExceptionLoggingMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -632,6 +633,15 @@ METRICS_ENABLED = os.getenv("METRICS_ENABLED", "false").lower() in {"1", "true",
 # DJANGO_ENV ∈ {dev,development,test,local} or DEBUG=True so a developer
 # hitting http://localhost cannot pin their browser to HTTPS for a year.
 SECURITY_HEADERS_ENABLED = _env_bool("SECURITY_HEADERS_ENABLED", "true")
+
+# --------------------------------------------------------------------------
+# Inbound body cap (ContentLengthLimitMiddleware)
+# --------------------------------------------------------------------------
+# Returns the standard ErrorResponse envelope with a 413 for over-cap
+# bodies — either declared via Content-Length (rejected early) or
+# detected at parse time by Django's own DATA_UPLOAD_MAX_MEMORY_SIZE
+# (RequestDataTooBig). Setting to 0 disables the declared-length check.
+MAX_REQUEST_BODY_BYTES = _env_int("MAX_REQUEST_BODY_BYTES", str(2 * 1024 * 1024))
 # Comma-separated IP / CIDR allowlist. Default trusts only loopback so the
 # endpoint is harmless even when METRICS_ENABLED is on but the network
 # perimeter is incomplete.
