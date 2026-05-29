@@ -72,6 +72,18 @@ repos:
         files: ^apps/core/.*\.py$
         pass_filenames: false
 
+      # Catch the recurring "module-level dict/set without a Lock"
+      # registry pattern — the same bug landed and was fixed three
+      # times before this hook (resilience registry, auth registry,
+      # tasks registry). See scripts/check_thread_safety.py for the
+      # AST shape and waiver syntax.
+      - id: check-thread-safety
+        name: guard against unlocked module-level mutable state
+        entry: python scripts/check_thread_safety.py
+        language: system
+        files: ^apps/core/.*\.py$
+        pass_filenames: false
+
       # Catch silent OpenAPI contract regressions — a new DRF view
       # shipped without an @extend_schema (or *_schema alias) /
       # serializer_class would render in drf-spectacular as a
