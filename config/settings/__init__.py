@@ -15,6 +15,17 @@ from dotenv import load_dotenv
 _apps_dir = str(Path(__file__).resolve().parent.parent.parent / "apps")
 if _apps_dir not in _sys.path:
     _sys.path.insert(0, _apps_dir)
+# Boot-time drift guard: recompute what config/celery.py *would* resolve to
+# and refuse to start if the two siblings disagree. Catches the only realistic
+# failure mode of the duplication (someone edits one copy without the other).
+_celery_apps_dir = str(
+    (Path(__file__).resolve().parent.parent / "celery.py").parent.parent / "apps"
+)
+if _apps_dir != _celery_apps_dir:
+    raise RuntimeError(
+        f"sys.path drift between config/settings/__init__.py ({_apps_dir!r}) "
+        f"and config/celery.py ({_celery_apps_dir!r}). Re-sync the two blocks."
+    )
 # ----------------------------------------------------------------------------
 
 # DJANGO_ENV must be explicitly set — no default.

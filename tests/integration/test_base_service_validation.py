@@ -30,7 +30,7 @@ def _valid_payload(user, *, name="ci-key", prefix="abcdef12") -> dict:
         "user": user,
         "name": name,
         "prefix": prefix,
-        "encrypted_key": "x" * 32,
+        "secret": "x" * 32,
     }
 
 

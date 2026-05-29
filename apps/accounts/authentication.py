@@ -2,7 +2,7 @@
 
 import secrets
 
-from django.core.cache import cache
+from django.core.cache import caches
 from django.utils import timezone
 from drf_spectacular.extensions import OpenApiAuthenticationExtension
 from rest_framework.authentication import BaseAuthentication
@@ -18,6 +18,11 @@ class APIKeyAuthentication(BaseAuthentication):
     """
 
     def authenticate(self, request):
+        # Function-local import is load-bearing: this class is referenced
+        # from DRF's DEFAULT_AUTHENTICATION_CLASSES, so DRF settings resolve
+        # it at app-registry population time — before accounts.models has
+        # finished initializing. Module-level `from accounts.models import
+        # APIKey` triggers a partial-init ImportError at Django boot.
         from accounts.models import APIKey
 
         key = request.META.get("HTTP_X_API_KEY")
@@ -34,18 +39,21 @@ class APIKeyAuthentication(BaseAuthentication):
             .first()
         )
 
-        if not api_key or not secrets.compare_digest(api_key.encrypted_key, key):
+        if not api_key or not secrets.compare_digest(api_key.secret, key):
             raise AuthenticationFailed("Invalid API key.")
 
         if not api_key.user.is_active:
             raise AuthenticationFailed("User account is disabled.")
 
-        # Debounce last_used_at — write at most once per 5 minutes to
-        # avoid a DB write on every request for high-throughput API keys.
+        # Debounce last_used_at on the rate_limit cache alias. Pinning the
+        # alias keeps this isolated from the default cache so worker-only
+        # deployments (which may swap the default backend) don't silently
+        # break the debounce.
+        debounce_cache = caches["rate_limit"]
         cache_key = f"apikey_used_{api_key.pk}"
-        if not cache.get(cache_key):
+        if not debounce_cache.get(cache_key):
             APIKey.objects.filter(pk=api_key.pk).update(last_used_at=timezone.now())
-            cache.set(cache_key, True, timeout=300)
+            debounce_cache.set(cache_key, True, timeout=300)
 
         return (api_key.user, api_key)
 

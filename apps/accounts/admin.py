@@ -101,7 +101,7 @@ class APIKeyAdmin(BaseModelAdmin):
     list_filter = ("is_active",)
     search_fields = ("name", "prefix", "user__email")
     ordering = ("-created_at",)
-    readonly_fields = ("prefix", "encrypted_key", "last_used_at")
+    readonly_fields = ("prefix", "secret", "last_used_at")
     autocomplete_fields = ("user",)
 
     fieldsets = (

@@ -138,10 +138,10 @@ class APIKey(BaseModel):
         db_index=True,
         help_text="First 8 chars of the key, used for lookup.",
     )
-    encrypted_key = EncryptedCharField(
+    secret = EncryptedCharField(
         max_length=500,
         editable=False,
-        help_text="Full key encrypted at rest via Fernet.",
+        help_text="Encrypted at rest via Fernet; decrypted to plaintext on read.",
     )
     last_used_at = models.DateTimeField(null=True, blank=True, editable=False)
     revoked_at = models.DateTimeField(
@@ -182,7 +182,7 @@ class APIKey(BaseModel):
                     user=user,
                     name=name,
                     prefix=raw_key[:8],
-                    encrypted_key=raw_key,
+                    secret=raw_key,
                     created_by=created_by,
                     updated_by=created_by,
                 )

@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from django.core.cache import cache
+from django.core.cache import caches
 from django.test import RequestFactory, TestCase
 from rest_framework.exceptions import AuthenticationFailed
 
@@ -30,9 +30,9 @@ class APIKeyModelTest(TestCase):
     def test_prefix_matches_raw_key_start(self):
         self.assertEqual(self.api_key.prefix, self.raw_key[:8])
 
-    def test_encrypted_key_decrypts_to_raw_key(self):
+    def test_secret_decrypts_to_raw_key(self):
         self.api_key.refresh_from_db()
-        self.assertEqual(self.api_key.encrypted_key, self.raw_key)
+        self.assertEqual(self.api_key.secret, self.raw_key)
 
     def test_create_key_sets_updated_by(self):
         api_key, _ = APIKey.create_key(
@@ -141,12 +141,13 @@ class APIKeyAuthenticationTest(TestCase):
 
     def test_last_used_at_debounced(self):
         """Second auth within 5 minutes skips the DB write (cache hit)."""
-        cache.clear()
+        debounce_cache = caches["rate_limit"]
+        debounce_cache.clear()
 
         # First auth — cache miss, writes last_used_at
         request = self.rf.get("/", HTTP_X_API_KEY=self.raw_key)
         self.auth.authenticate(request)
 
-        # Verify cache key was set
+        # Verify cache key was set on the rate_limit alias
         cache_key = f"apikey_used_{self.api_key.pk}"
-        self.assertTrue(cache.get(cache_key))
+        self.assertTrue(debounce_cache.get(cache_key))

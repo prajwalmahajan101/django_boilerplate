@@ -241,7 +241,10 @@ class APIKeyDeleteView(APIView):
                 message="API key not found.",
                 status_code=status.HTTP_404_NOT_FOUND,
             )
-        return SuccessResponse(message="API key deleted.", status_code=status.HTTP_204_NO_CONTENT)
+        # 200, not 204: the universal-envelope contract carries a JSON body,
+        # which is spec-illegal on 204 ("No Content") and rejected by some
+        # proxies. 200 is the only status that satisfies the envelope.
+        return SuccessResponse(message="API key deleted.")
 
 
 class APIKeyRevokeView(APIView):
