@@ -1,0 +1,8 @@
+-r base.txt
+
+psycopg2-binary>=2.9,<3.0  # Use binary build for local dev (no libpq-dev needed)
+django-debug-toolbar>=6.0,<7.0
+ipython>=9,<10
+pip-tools>=7.4,<8.0
+pip-audit>=2.10,<3.0  # CVE scanning for installed packages
+cyclonedx-bom>=7,<8  # SBOM generation; invoked by `make sbom`

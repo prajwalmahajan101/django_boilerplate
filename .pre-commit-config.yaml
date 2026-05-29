@@ -1,0 +1,55 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.0
+    hooks:
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        name: pydocstyle (docstring style)
+        files: ^apps/.*\.py$
+
+  - repo: https://github.com/terrencepreilly/darglint
+    rev: v1.8.1
+    hooks:
+      - id: darglint
+        name: darglint (docstring completeness)
+        args: ["-v", "2"]
+        files: ^apps/.*\.py$
+
+  # Keep requirements/*.txt in sync with requirements/*.in. pre-commit
+  # provisions pip-tools into its own managed virtualenv via
+  # additional_dependencies, so contributors don't need it on PATH.
+  - repo: local
+    hooks:
+      - id: pip-compile-base
+        name: pip-compile (base.in -> base.txt)
+        entry: pip-compile --quiet --output-file=requirements/base.txt requirements/base.in
+        language: python
+        additional_dependencies: ["pip-tools==7.5.3"]
+        files: ^requirements/base\.in$
+        pass_filenames: false
+
+      - id: pip-compile-dev
+        name: pip-compile (dev.in -> dev.txt)
+        entry: pip-compile --quiet --output-file=requirements/dev.txt requirements/dev.in
+        language: python
+        additional_dependencies: ["pip-tools==7.5.3"]
+        files: ^requirements/(base|dev)\.in$
+        pass_filenames: false
+
+      # Catch utility atrophy — a public symbol anywhere in apps/core/
+      # with no callers in the tree (see scripts/check_dead_utils.py for
+      # the rules and the allowlist escape hatch). Broader than just
+      # apps/core/utils/ so orphans in resilience providers, lifecycle
+      # helpers, etc. get caught alongside.
+      - id: check-dead-utils
+        name: check for dead public symbols under apps/core/
+        entry: python scripts/check_dead_utils.py
+        language: system
+        files: ^apps/core/.*\.py$
+        pass_filenames: false

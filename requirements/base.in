@@ -1,0 +1,53 @@
+# Pin policy: one-minor band for fast-moving frameworks; narrow ranges for
+# everything else. Re-evaluate on each recompile. The narrower the range,
+# the less surprise breakage from transitive upgrades.
+
+# Core
+django>=6.0,<6.1
+python-dotenv
+
+# Database
+psycopg2
+sqlalchemy>=2.0,<2.1
+
+# Admin
+django-unfold>=0.86,<1.0
+
+# API
+djangorestframework>=3.17,<3.18
+drf-spectacular>=0.27,<1.0
+django-cors-headers>=4.0,<5.0
+
+# Auth
+django-allauth[socialaccount]>=65.0,<66.0
+dj-rest-auth[with_social]>=7.0,<8.0
+djangorestframework-simplejwt>=5.3,<6.0
+
+# Task queue
+celery>=5.4,<6.0
+kombu>=5.4,<6.0
+# kombu's `redis://` broker transport (used for Valkey via the redis protocol)
+# subclasses `redis.Redis` at import time. django-valkey ships its own client
+# but kombu does not auto-pick it up — so redis-py must be installed
+# explicitly for Celery to connect to Valkey DB 0.
+redis>=5.0,<6.0
+django-celery-beat>=2.6,<3.0
+django-celery-results>=2.5,<3.0
+
+# Cache (Valkey) — PyPI only has 0.x; widen if/when a 1.x is published.
+django-valkey>=0.4,<0.5
+
+# Monitoring
+flower>=2.0,<3.0
+python-json-logger>=4.0,<5.0
+sentry-sdk[django]>=2.0,<3.0
+
+# Resilience
+tenacity>=9.0,<10.0
+pybreaker>=1.0,<2.0
+
+# AWS
+boto3>=1.35,<2.0
+
+# Static files
+whitenoise>=6.0,<7.0

@@ -1,0 +1,62 @@
+# Byte-compiled / packaging
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtualenvs
+.venv/
+venv/
+env/
+.python-version
+
+# Django
+*.log
+*.pot
+*.pyc
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+mediafiles/
+
+# Env files — keep .env.example committed; ignore real envs
+.env
+.env.*
+!environment/.env.example
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+
+# Type checkers & linters
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# Editors / IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+ehthumbs.db
+
+# Project artefacts
+sbom/
+graphify-out/

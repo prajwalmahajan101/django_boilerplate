@@ -1,0 +1,168 @@
+# WARNING: This docker-compose file is for LOCAL DEVELOPMENT ONLY.
+# Default credentials below must NOT be used in production.
+# Run with: docker compose up -d --build
+#
+# Base image digests pinned for reproducibility. Refresh monthly via:
+#   docker pull <image> && docker inspect --format='{{index .RepoDigests 0}}' <image>
+services:
+  web:
+    build:
+      context: .
+      args:
+        REQUIREMENTS_FILE: requirements/dev.txt
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_files:/app/staticfiles
+      # Boto3 default credential chain falls back to ~/.aws/credentials —
+      # mount the host's AWS CLI config read-only so a developer who set
+      # up ``aws configure`` doesn't need to also export env vars before
+      # ``docker compose up``. Containers run as ``appuser`` (UID 1000),
+      # which typically matches the host user's UID on Linux dev boxes.
+      - ${HOME}/.aws:/home/appuser/.aws:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    env_file: environment/.env.local
+    environment:
+      - DJANGO_ENV=local
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - POSTGRES_HOST=db
+      - VALKEY_CACHE_URL=valkey://valkey:6379/2
+      - VALKEY_RATE_LIMIT_URL=valkey://valkey:6379/3
+      # AWS credential passthrough — boto3 picks these up via the default
+      # credential chain. Source them from your host shell (already set by
+      # the AWS CLI) so they never land in source control. If your only
+      # local config is ``~/.aws/credentials``, run
+      # ``eval "$(aws configure export-credentials --format env)"`` before
+      # ``docker compose up``, or mount ``~/.aws`` into the container.
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+
+  nginx:
+    image: nginx:alpine@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    ports:
+      - "${WEB_PORT:-8000}:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_files:/app/staticfiles:ro
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-app}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:8-alpine@sha256:1cb6b20b70d927560cc4cc5397b5f045e74aa603ff7696274778880bb6fadc75
+    restart: unless-stopped
+    command: valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:${VALKEY_PORT:-6379}:6379"
+    volumes:
+      - valkey_data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  celery_worker:
+    build:
+      context: .
+      args:
+        REQUIREMENTS_FILE: requirements/dev.txt
+    restart: unless-stopped
+    command: >
+      celery -A config worker
+      --pool=threads
+      --concurrency=4
+      --loglevel=info
+      --queues=default,high_priority,low_priority
+    volumes:
+      - .:/app
+      # See comment on the ``web`` service.
+      - ${HOME}/.aws:/home/appuser/.aws:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    env_file: environment/.env.local
+    environment:
+      - DJANGO_ENV=local
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - POSTGRES_HOST=db
+      - VALKEY_CACHE_URL=valkey://valkey:6379/2
+      - VALKEY_RATE_LIMIT_URL=valkey://valkey:6379/3
+      # AWS credential passthrough (see comment on the ``web`` service).
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+
+  celery_beat:
+    build:
+      context: .
+      args:
+        REQUIREMENTS_FILE: requirements/dev.txt
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+      # See comment on the ``web`` service.
+      - ${HOME}/.aws:/home/appuser/.aws:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    env_file: environment/.env.local
+    environment:
+      - DJANGO_ENV=local
+      - DJANGO_SETTINGS_MODULE=config.settings
+      - POSTGRES_HOST=db
+      # AWS credential passthrough (see comment on the ``web`` service).
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+
+  flower:
+    build:
+      context: .
+      args:
+        REQUIREMENTS_FILE: requirements/dev.txt
+    command: celery -A config flower --port=5555 --basic_auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-changeme}
+    ports:
+      - "127.0.0.1:5555:5555"
+    depends_on:
+      - valkey
+      - celery_worker
+    env_file: environment/.env.local
+    environment:
+      - DJANGO_ENV=local
+      - DJANGO_SETTINGS_MODULE=config.settings
+
+volumes:
+  postgres_data:
+  valkey_data:
+  static_files:

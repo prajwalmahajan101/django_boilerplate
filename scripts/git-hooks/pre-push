@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Pre-push gate: runs `make deps-check` only when the push touches dependency
+# inputs. The full deps-check builds four ephemeral docker containers and is
+# slow (~60s); we skip it for everything that can't possibly cause drift.
+#
+# Install: `make install-hooks` (creates a symlink from .git/hooks/pre-push
+# to this file). Bypass for emergencies: `git push --no-verify`.
+
+set -euo pipefail
+
+# Files that, if changed in any pushed commit, should trigger a deps-check.
+#   - requirements/*.in : the bound source. If edited without re-compile, .txt
+#     drifts and bounded-pinning discipline silently rots.
+#   - requirements/*.txt : a manual edit to the lockfile is itself drift.
+#   - Makefile : the deps-check target itself, or the audit-system-deps pins,
+#     could change behaviour.
+RELEVANT_PATTERN='^(requirements/.*\.(in|txt)|Makefile)$'
+
+# `git push` passes <remote> <url> on argv and refspecs on stdin: each line is
+# `<local_ref> <local_sha> <remote_ref> <remote_sha>`. A delete is signalled
+# by a zero local_sha; we skip those.
+zero_sha='0000000000000000000000000000000000000000'
+
+remote_name="${1:-origin}"
+changed_files=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    [ "$local_sha" = "$zero_sha" ] && continue
+    if [ "$remote_sha" = "$zero_sha" ]; then
+        # New branch: diff against the remote's default tip we can resolve.
+        # Fall back to the merge-base with origin/HEAD if it exists.
+        if base=$(git merge-base "$local_sha" "${remote_name}/HEAD" 2>/dev/null); then
+            range="${base}..${local_sha}"
+        else
+            # No common base resolvable — diff the whole tree.
+            range="${local_sha}"
+        fi
+    else
+        range="${remote_sha}..${local_sha}"
+    fi
+    changed_files="${changed_files}$(git diff --name-only "${range}" 2>/dev/null || true)"$'\n'
+done
+
+# Nothing being pushed (e.g. all deletes).
+[ -z "${changed_files//[[:space:]]/}" ] && exit 0
+
+if ! echo "$changed_files" | grep -Eq "$RELEVANT_PATTERN"; then
+    # No dependency inputs touched — skip the slow check.
+    exit 0
+fi
+
+echo "pre-push: dependency inputs changed — running 'make deps-check'..."
+if ! make deps-check; then
+    echo
+    echo "!! pre-push: deps-check failed."
+    echo "   Either run 'make deps-compile' (or your repo's pip-compile workflow)"
+    echo "   to regenerate the affected requirements/*.txt, or push with"
+    echo "   --no-verify if you have a documented reason to bypass."
+    exit 1
+fi

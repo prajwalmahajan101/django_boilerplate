@@ -1,0 +1,40 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations", "staticfiles", ".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "RUF"]
+ignore = [
+    "E501",  # line length — formatter handles it
+    "B008",  # function call in default argument (Django common idiom)
+    "N818",  # exception names without "Error" suffix (legacy aliases)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"apps/*/migrations/*" = ["E", "F", "N", "B", "UP", "SIM", "I", "RUF"]
+"apps/*/tests/*" = ["D", "N802", "N803", "N806"]
+"tests/*" = ["D", "N802", "N803", "N806"]
+"config/settings/*" = ["F403", "F405"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.pydocstyle]
+convention = "google"
+add-ignore = [
+    "D100",  # missing module docstring
+    "D104",  # missing public package docstring
+    "D107",  # missing __init__ docstring
+    "D203",  # 1 blank line before class docstring (conflicts with D211)
+    "D213",  # multi-line summary on second line (conflicts with D212)
+]
+match = "(?!test_|migrations|conftest).*\\.py"
+match-dir = "(?!migrations|tests|\\.).*"
+
+[tool.darglint]
+docstring_style = "google"
+strictness = "short"
+ignore_regex = "^_"
