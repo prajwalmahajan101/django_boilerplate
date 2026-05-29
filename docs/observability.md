@@ -10,7 +10,7 @@ The codebase is **prepared for** Prometheus + Grafana, but the exporter is **not
 - `prometheus-client` is already a **transitive dependency** in the lock files (pulled in by another package — `requirements/prod.in` does not declare it explicitly). This is convenient: activation does not need an explicit `pip install`. Verify importability at deploy time.
 - The `/api/metrics` URL slot is wired and returns **HTTP 503** with body `metrics exporter not configured` while `METRICS_ENABLED=False` (the default).
 - `apps/core/middleware/metrics_middleware.py` exists but is **commented out** in `MIDDLEWARE`. Wiring it is part of activation.
-- A Grafana dashboard JSON is committed at `ops/grafana/co-lending-gateway.json`. Every panel shows "No data" today; they light up after activation without further changes.
+- Commit a Grafana dashboard JSON at `ops/grafana/<project>.json` referencing the metric names below. Every panel shows "No data" until activation; they light up after activation without further changes.
 
 ## Cardinality contract
 
@@ -77,7 +77,7 @@ When the time comes to actually run Prometheus:
 3. Add `core.middleware.metrics_middleware.MetricsMiddleware` to the `MIDDLEWARE` list in `config/settings/base.py` (the class exists in this phase but is not referenced anywhere).
 4. Deploy.
 5. Confirm `/api/metrics` returns HTTP 200 with Prometheus text format from the scraper's source IP.
-6. Point the Grafana instance at `ops/grafana/co-lending-gateway.json` (import or sync via provisioning).
+6. Point the Grafana instance at the project's dashboard JSON under `ops/grafana/` (import or sync via provisioning).
 
 **No code changes required.** Every call site already shapes data correctly for the cardinality contract. That's the whole point of the prep phase.
 

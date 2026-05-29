@@ -30,6 +30,26 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   ALB + nginx. (ISSUE-029)
 
 ### Changed
+- **Breaking default:** prod cache `KEY_PREFIX` is now env-driven
+  (`CACHE_KEY_PREFIX`, default `"app"`). Was hard-coded to
+  `"colend"` (donor-project lineage). Adopters upgrading from
+  0.2.0 who relied on the implicit `colend` prefix must set
+  `CACHE_KEY_PREFIX=colend` in their prod env, or accept that
+  cached entries miss on first deploy and the cache repopulates
+  under the new namespace. (`config/settings/prod.py`) (ISSUE-027)
+- Donor-project lineage (`co-lending-gateway`, `colend`,
+  `colender`, `optimoloan`) swept across config (`wsgi.py`,
+  `asgi.py`, `prod.py`), tests (`apps/core/tests/test_ses.py`),
+  the `http_client.py` docstring example, docs
+  (`README.md`, `docs/development.md`, `docs/deployment.md`,
+  `docs/configuration.md`, `docs/observability.md`,
+  `docs/authentication.md`, `docs/resilience.md`). Generic
+  values used instead (`app`, `example.com`,
+  `<repository-dir>`). A new adopter's `git grep` for the
+  donor name now returns zero hits. (ISSUE-027)
+- `scripts/stale_refs.yaml` pattern is now case-insensitive
+  (`(?i)`) so capitalised forms (`Co-Lending Gateway` in prose
+  vs `co-lending-gateway` in shell commands) can't slip past.
 - `scripts/check_stale_refs.py` scope extended to `.py` files under
   `apps/`, `config/`, `scripts/` (was Markdown / CLAUDE.md only).
   Migrations are auto-excluded (intentionally carry historical

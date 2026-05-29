@@ -16,7 +16,7 @@ Usage::
     response = make_http_request(
         method="POST",
         url="https://partner.example.com/api/leads",
-        headers={"X-Tenant": "colender"},
+        headers={"X-Tenant": "example"},
         json_body={"name": "John"},
         max_attempts=3,
     )

@@ -20,7 +20,7 @@ Optional (for running tools outside Docker):
 
 ```bash
 git clone <repository-url>
-cd co-lending-gateway
+cd <repository-dir>
 cp environment/.env.example environment/.env.local
 ```
 
@@ -52,8 +52,8 @@ This starts all services:
 ### 3. Initialize Database
 
 ```bash
-docker exec co-lending-gateway-web-1 python manage.py migrate
-docker exec co-lending-gateway-web-1 python manage.py createsuperuser
+docker exec app-web-1 python manage.py migrate
+docker exec app-web-1 python manage.py createsuperuser
 ```
 
 ### 4. Verify
@@ -90,8 +90,8 @@ from core.base.service import BaseService
 
 2. Create migrations:
    ```bash
-   docker exec co-lending-gateway-web-1 python manage.py makemigrations myapp
-   docker exec co-lending-gateway-web-1 python manage.py migrate
+   docker exec app-web-1 python manage.py makemigrations myapp
+   docker exec app-web-1 python manage.py migrate
    ```
 
 ### Adding a New Service
@@ -253,16 +253,16 @@ pip-audit -r requirements/base.txt
 
 ```bash
 # Run all tests
-docker exec co-lending-gateway-web-1 pytest
+docker exec app-web-1 pytest
 
 # With coverage
-docker exec co-lending-gateway-web-1 pytest --cov
+docker exec app-web-1 pytest --cov
 
 # Run specific test file
-docker exec co-lending-gateway-web-1 pytest apps/accounts/tests/test_views.py
+docker exec app-web-1 pytest apps/accounts/tests/test_views.py
 
 # Run specific test
-docker exec co-lending-gateway-web-1 pytest -k "test_login"
+docker exec app-web-1 pytest -k "test_login"
 ```
 
 Test settings (`config/settings/test.py`):
@@ -416,7 +416,7 @@ Attach the filter to any logger or handler via `logging.config.dictConfig`. The 
 
 ```bash
 # Create migrations
-docker exec co-lending-gateway-web-1 python manage.py makemigrations <app_name>
+docker exec app-web-1 python manage.py makemigrations <app_name>
 
 # Apply migrations
 docker compose exec web python manage.py migrate

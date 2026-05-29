@@ -1,4 +1,4 @@
-"""ASGI config for co-lending-gateway project."""
+"""ASGI config for this project."""
 import os
 import sys
 from pathlib import Path

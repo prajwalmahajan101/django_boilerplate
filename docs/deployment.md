@@ -113,7 +113,7 @@ docker compose -f docker-compose.dev.yml exec web python manage.py migrate
 
 ### Networking
 
-All services communicate on `colend-net` Docker network. Only the gateway exposes ports to the host (80, 443).
+All services communicate on the `app-net` Docker network. Only the gateway exposes ports to the host (80, 443). Rename the network in `docker-compose.yml` to match your project before deploy.
 
 ### Health Checks
 
@@ -154,18 +154,18 @@ FROM python:3.12-slim
 ```bash
 docker build \
   --build-arg REQUIREMENTS_FILE=requirements/prod.txt \
-  -t co-lending-gateway:latest .
+  -t app:latest .
 ```
 
 ### Push to ECR
 
 ```bash
 # Tag
-docker tag co-lending-gateway:latest \
-  $ECR_REGISTRY/co-lending-gateway:$IMAGE_TAG
+docker tag app:latest \
+  $ECR_REGISTRY/app:$IMAGE_TAG
 
 # Push
-docker push $ECR_REGISTRY/co-lending-gateway:$IMAGE_TAG
+docker push $ECR_REGISTRY/app:$IMAGE_TAG
 ```
 
 ## Nginx Configuration

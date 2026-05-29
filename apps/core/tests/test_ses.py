@@ -25,7 +25,7 @@ from core.utils.ses import send_email
 
 
 _SES_SETTINGS = dict(
-    SES_SENDER_EMAIL="ops@optimoloan.com",
+    SES_SENDER_EMAIL="ops@example.com",
     AWS_REGION="ap-south-1",
 )
 
@@ -57,7 +57,7 @@ class SendEmailRawMIMETest(TestCase):
 
         mime = _captured_mime(client)
         self.assertTrue(result["message_id_header"].startswith("<"))
-        self.assertTrue(result["message_id_header"].endswith("@optimoloan.com>"))
+        self.assertTrue(result["message_id_header"].endswith("@example.com>"))
         # Deterministic: the header on the wire IS the value returned.
         self.assertEqual(mime["Message-ID"], result["message_id_header"])
         self.assertEqual(result["message_id"], "ses-msg-1")
@@ -94,7 +94,7 @@ class SendEmailRawMIMETest(TestCase):
             subject="Re: thread",
             body_html="<p>x</p>",
             in_reply_to="<root@partner.com>",
-            references=["<root@partner.com>", "<reply1@optimoloan.com>"],
+            references=["<root@partner.com>", "<reply1@example.com>"],
         )
 
         mime = _captured_mime(client)
@@ -102,7 +102,7 @@ class SendEmailRawMIMETest(TestCase):
         # References must accumulate the chain (caller's list preserved).
         self.assertEqual(
             mime["References"],
-            "<root@partner.com> <reply1@optimoloan.com>",
+            "<root@partner.com> <reply1@example.com>",
         )
 
     @patch("core.utils.ses.get_aws_client")

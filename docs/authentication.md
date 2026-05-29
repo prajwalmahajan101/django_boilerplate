@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Co-Lending Gateway uses a layered auth system:
+This boilerplate ships a layered auth system:
 
 1. **Authentication**: Google OAuth2 -> JWT tokens (primary), API keys (system-to-system)
 2. **Authorization**: Role-Based Access Control (RBAC) with Resource/Action permissions

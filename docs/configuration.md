@@ -265,7 +265,7 @@ Add additional `EncryptedCharField` columns to this list as new ones land.
    docker exec -e DJANGO_ENV=prod \
      -e FIELD_ENCRYPTION_KEY=<old-key> \
      -e FIELD_ENCRYPTION_KEY_NEW=<new-key> \
-     co-lending-gateway-celery_worker-1 \
+     app-celery_worker-1 \
      python manage.py shell -c "$(cat <<'PY'
    import os
    from cryptography.fernet import Fernet

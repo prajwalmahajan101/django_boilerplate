@@ -41,7 +41,11 @@ CACHES = {
             "max_connections": 25,
             "retry_on_timeout": True,
         },
-        "KEY_PREFIX": "colend",
+        # Cache key namespace. Defaulting to "app" so a fresh adopter
+        # never silently inherits the donor project's prefix. Set
+        # CACHE_KEY_PREFIX in deploy env to namespace per service —
+        # required if multiple services share one Valkey instance.
+        "KEY_PREFIX": os.getenv("CACHE_KEY_PREFIX", "app"),
         "TIMEOUT": 300,
     },
     "rate_limit": {

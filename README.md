@@ -1,7 +1,6 @@
 # Django Boilerplate
 
-A production-grade Django 6 + DRF starter, extracted from a working
-co-lending gateway. Ships with:
+A production-grade Django 6 + DRF starter. Ships with:
 
 - **`apps/core/`** — base classes (`BaseModel`, `BaseService[T]`),
   typed exception hierarchy + DRF handler, structured response

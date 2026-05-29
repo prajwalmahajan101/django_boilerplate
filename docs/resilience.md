@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Co-Lending Gateway implements defense-in-depth resilience across three layers:
+This boilerplate implements defense-in-depth resilience across three layers:
 
 1. **Nginx** — Rate limiting at the reverse proxy (first line of defense)
 2. **DRF Throttles** — Application-level rate limiting per user tier
