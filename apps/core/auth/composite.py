@@ -18,7 +18,8 @@ class CompositeAuthentication(BaseAuthentication):
     """DRF auth class delegating to the registered provider chain."""
 
     def authenticate(self, request):
-        for provider in enabled_providers():
+        providers = self._providers_for(request)
+        for provider in providers:
             result = provider.authenticate(request)
             if result is not None:
                 return result
@@ -26,10 +27,28 @@ class CompositeAuthentication(BaseAuthentication):
 
     def authenticate_header(self, request):
         # Surface the first provider's WWW-Authenticate hint if any.
-        for provider in enabled_providers():
+        for provider in self._providers_for(request):
             header = getattr(provider, "authenticate_header", None)
             if callable(header):
                 value = header(request)
                 if value:
                     return value
         return None
+
+    @staticmethod
+    def _providers_for(request):
+        """Snapshot the provider chain once per request.
+
+        DRF calls ``authenticate`` first and (on failure) reaches into
+        ``authenticate_header`` separately. Caching the registry walk
+        on the request avoids a second registry-lock acquisition + list
+        construction on every 401.
+        """
+        cached = getattr(request, "_composite_auth_providers", None)
+        if cached is None:
+            cached = enabled_providers()
+            try:
+                request._composite_auth_providers = cached
+            except AttributeError:
+                pass
+        return cached
