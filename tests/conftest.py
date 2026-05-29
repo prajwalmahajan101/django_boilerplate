@@ -1,6 +1,133 @@
 """Top-level pytest configuration.
 
-Apps own their own ``apps/<name>/tests/`` suites; this module is the
-place for repo-wide fixtures (factory shortcuts, request fixtures,
-shared mocks) that more than one app needs.
+Repo-wide fixtures live here. Per-app fixtures live in
+``apps/<name>/tests/conftest.py``. Per-layer fixtures live in
+``tests/{unit,integration,e2e}/conftest.py``.
+
+Layer convention:
+
+* ``tests/unit/`` — no DB / no cache / no HTTP. Use mocks for every
+  boundary. Marked ``@pytest.mark.unit`` (or just live under the dir).
+* ``tests/integration/`` — DB, cache, broker allowed. No HTTP client.
+  Marked ``@pytest.mark.integration``.
+* ``tests/e2e/`` — full ``APIClient`` round-trip through views,
+  serializers, services, ORM. Marked ``@pytest.mark.e2e``.
 """
+
+from __future__ import annotations
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# Layer auto-marking
+# ---------------------------------------------------------------------------
+
+
+def pytest_collection_modifyitems(config, items):
+    """Auto-apply layer markers based on test file path.
+
+    Tests under ``tests/unit/`` → ``@pytest.mark.unit``.
+    Tests under ``tests/integration/`` → ``@pytest.mark.integration``.
+    Tests under ``tests/e2e/`` → ``@pytest.mark.e2e``.
+    Tests under ``apps/*/tests/`` → ``@pytest.mark.unit`` by default
+    (override per-test with ``@pytest.mark.integration`` when they hit
+    the DB).
+    """
+    for item in items:
+        path = str(item.fspath)
+        if "/tests/unit/" in path:
+            item.add_marker(pytest.mark.unit)
+        elif "/tests/integration/" in path:
+            item.add_marker(pytest.mark.integration)
+        elif "/tests/e2e/" in path:
+            item.add_marker(pytest.mark.e2e)
+        elif "/apps/" in path and "/tests/" in path:
+            # App-co-located tests default to unit unless the test
+            # explicitly opts into another layer.
+            if not any(
+                m.name in {"unit", "integration", "e2e"} for m in item.iter_markers()
+            ):
+                item.add_marker(pytest.mark.unit)
+
+
+# ---------------------------------------------------------------------------
+# Shared fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def api_client():
+    """Unauthenticated DRF ``APIClient`` instance."""
+    from rest_framework.test import APIClient
+
+    return APIClient()
+
+
+@pytest.fixture
+def user_factory(db):
+    """Callable that creates a ``User`` with sane defaults.
+
+    Usage::
+
+        def test_x(user_factory):
+            u = user_factory(email="alice@example.com")
+    """
+    from tests.factories import UserFactory
+
+    def _make(**overrides):
+        return UserFactory(**overrides)
+
+    return _make
+
+
+@pytest.fixture
+def user(user_factory):
+    """A single freshly-created active user."""
+    return user_factory()
+
+
+@pytest.fixture
+def authed_api_client(api_client, user):
+    """``APIClient`` already authenticated as a fresh user."""
+    api_client.force_authenticate(user=user)
+    api_client.user = user  # convenience handle for assertions
+    return api_client
+
+
+@pytest.fixture
+def superuser_api_client(api_client, user_factory):
+    """``APIClient`` authenticated as a Django superuser."""
+    su = user_factory(is_staff=True, is_superuser=True)
+    api_client.force_authenticate(user=su)
+    api_client.user = su
+    return api_client
+
+
+@pytest.fixture
+def settings_override(settings):
+    """Shorthand for ``pytest-django``'s ``settings`` fixture.
+
+    Reads more clearly at the call site::
+
+        def test_x(settings_override):
+            settings_override.FOO = "bar"
+    """
+    return settings
+
+
+@pytest.fixture(autouse=True)
+def _clear_caches():
+    """Clear Django + DRF in-memory caches between tests.
+
+    Prevents bleed of throttle / permission / breaker state between
+    test cases on the same process.
+    """
+    from django.core.cache import caches
+
+    yield
+    for cache in caches.all():
+        try:
+            cache.clear()
+        except Exception:  # noqa: BLE001 — some backends raise on .clear()
+            pass

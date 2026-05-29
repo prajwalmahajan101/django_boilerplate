@@ -1,0 +1,33 @@
+[run]
+source = apps
+branch = True
+parallel = True
+concurrency = multiprocessing,thread
+omit =
+    */migrations/*
+    */tests/*
+    */__pycache__/*
+    */apps.py
+    */admin.py
+    apps/*/urls.py
+    config/*
+
+[report]
+show_missing = True
+skip_covered = False
+skip_empty = True
+precision = 2
+fail_under = 70
+exclude_lines =
+    pragma: no cover
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    \.\.\.
+
+[html]
+directory = htmlcov
+title = Django Boilerplate Coverage
+
+[xml]
+output = coverage.xml

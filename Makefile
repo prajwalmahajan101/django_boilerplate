@@ -1,10 +1,16 @@
-# Co-Lending Gateway — dev convenience targets.
+# Django Boilerplate — dev convenience targets.
 #
 # All targets are idempotent and safe to run repeatedly. Targets that
 # mutate anything (regenerating requirements, writing SBOM, etc.) are
 # explicitly named with an action verb.
 
-.PHONY: help audit audit-all check deps-check sbom sbom-diff install-hooks
+.PHONY: help audit audit-all check deps-check sbom sbom-diff install-hooks \
+	test test-unit test-integration test-e2e test-slow test-external \
+	test-cov test-cov-html test-cov-open coverage-clean
+
+# Pytest passthrough: `make test ARGS="-k foo -x"`
+ARGS ?=
+PYTEST := DJANGO_ENV=test pytest
 
 # Single source of truth for the Python base image. Must match the digest
 # pinned in Dockerfile line 6 / line 36. Refresh both places together via:
@@ -100,6 +106,45 @@ sbom-diff:  ## Diff a freshly-generated SBOM against the committed sbom/prod-sbo
 		exit 1; \
 	fi; \
 	rm -rf "$$tmpdir"
+
+# ---------------------------------------------------------------------------
+# Test targets
+# ---------------------------------------------------------------------------
+
+test:  ## Run the default test suite (unit + integration + e2e, skip slow/external)
+	$(PYTEST) -m "not slow and not external" $(ARGS)
+
+test-unit:  ## Run only unit-layer tests (fast, no I/O)
+	$(PYTEST) -m unit $(ARGS)
+
+test-integration:  ## Run only integration-layer tests (DB + cache + broker)
+	$(PYTEST) -m integration $(ARGS)
+
+test-e2e:  ## Run only e2e-layer tests (full APIClient round-trip)
+	$(PYTEST) -m e2e $(ARGS)
+
+test-slow:  ## Run tests marked @pytest.mark.slow
+	$(PYTEST) -m slow $(ARGS)
+
+test-external:  ## Run tests marked @pytest.mark.external (hits real services)
+	$(PYTEST) -m external $(ARGS)
+
+test-cov:  ## Run tests with coverage; terminal report + coverage.xml
+	$(PYTEST) -m "not slow and not external" \
+		--cov --cov-report=term-missing --cov-report=xml $(ARGS)
+
+test-cov-html:  ## Same as test-cov plus htmlcov/ directory
+	$(PYTEST) -m "not slow and not external" \
+		--cov --cov-report=term-missing --cov-report=xml --cov-report=html $(ARGS)
+
+test-cov-open: test-cov-html  ## Generate HTML report and open it in the default browser
+	@if command -v xdg-open >/dev/null 2>&1; then xdg-open htmlcov/index.html; \
+	elif command -v open >/dev/null 2>&1; then open htmlcov/index.html; \
+	else echo "open htmlcov/index.html manually"; fi
+
+coverage-clean:  ## Remove coverage artifacts
+	@rm -rf .coverage .coverage.* coverage.xml htmlcov/
+	@echo "removed coverage artifacts."
 
 install-hooks:  ## Install repo git hooks into .git/hooks (symlink, idempotent)
 	@if [ ! -d .git ]; then echo "!! not a git repo — nothing to install"; exit 1; fi
