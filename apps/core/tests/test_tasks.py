@@ -36,9 +36,12 @@ class RegisterTaskTests(TestCase):
 class EnqueueTests(TestCase):
     @override_settings(CELERY_TASK_DEFAULT_QUEUE="my-queue")
     def test_enqueue_forwards_to_celery_send_task(self) -> None:
-        with patch("config.celery.app.send_task") as send_task:
+        # Patch the ``current_app`` proxy as imported into the queue
+        # module — apps/core/ must not reach into ``config.celery``,
+        # so the producer goes through ``celery.current_app``.
+        with patch("core.tasks.queue.current_app") as celery_app:
             enqueue("tests.dummy", 1, 2, x="y")
-            send_task.assert_called_once_with(
+            celery_app.send_task.assert_called_once_with(
                 "tests.dummy",
                 args=(1, 2),
                 kwargs={"x": "y"},
