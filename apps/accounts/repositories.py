@@ -15,7 +15,12 @@ class UserRepository:
     model = User
 
     def get_queryset(self) -> QuerySet:
-        return self.model.objects.all()
+        # Prefetch the RBAC chain by default. RBACBackend.has_perm() reads
+        # ``user.roles.filter(permissions__...)`` for every Django permission
+        # check; without prefetch each check is an N+1 (roles + permissions
+        # per role). The cost of prefetching is one extra query at fetch
+        # time for substantial savings on permission-heavy views.
+        return self.model.objects.prefetch_related("roles__permissions")
 
     def get_by_id(self, pk: int):
         try:
@@ -56,7 +61,10 @@ class RoleRepository:
     model = Role
 
     def get_queryset(self) -> QuerySet[Role]:
-        return self.model.objects.all()
+        # Role almost always needs its permissions read alongside it
+        # (admin list views, RBAC checks, role-detail responses). Prefetch
+        # by default so callers don't have to remember.
+        return self.model.objects.prefetch_related("permissions")
 
     def get_or_create(self, name: str, defaults: dict) -> tuple[Role, bool]:
         return self.model.objects.get_or_create(name=name, defaults=defaults)

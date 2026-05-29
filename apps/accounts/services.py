@@ -45,7 +45,8 @@ class APIKeyService(BaseService[APIKey]):
         """
         api_key = (
             APIKey.objects
-            .select_for_update()
+            .select_related("user")
+            .select_for_update(of=("self",))
             .filter(pk=pk, is_active=True)
             .first()
         )

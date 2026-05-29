@@ -45,6 +45,11 @@ class BaseService(ABC, Generic[ModelType]):
     # circular soft-FK chains introduced by future contributors.
     MAX_CASCADE_DEPTH: int = 10
 
+    # Hard ceiling on per-call page size. Callers asking for more than
+    # this get silently capped (with a debug log) instead of materializing
+    # a million-row queryset. Subclasses can override per-resource.
+    max_page_size: int = 100
+
     # ------------------------------------------------------------------
     # Queryset
     # ------------------------------------------------------------------
@@ -169,12 +174,27 @@ class BaseService(ABC, Generic[ModelType]):
             self._validate_order_keys(order_by)
             qs = qs.order_by(*order_by)
 
-        if offset is not None and limit is not None:
-            qs = qs[offset : offset + limit]
-        elif offset is not None:
-            qs = qs[offset:]
-        elif limit is not None:
-            qs = qs[:limit]
+        # Enforce the page-size ceiling. An explicit caller-supplied limit
+        # that exceeds ``max_page_size`` is capped silently (a debug log
+        # makes the cap visible in development); an absent limit is set
+        # to the ceiling so unbounded ``.all()``-style listings are
+        # impossible to trigger by accident.
+        capped_limit = limit if limit is not None else self.max_page_size
+        if capped_limit > self.max_page_size:
+            logger.debug(
+                "list_limit_capped",
+                extra={
+                    "service": self.__class__.__name__,
+                    "requested": capped_limit,
+                    "max": self.max_page_size,
+                },
+            )
+            capped_limit = self.max_page_size
+
+        if offset is not None:
+            qs = qs[offset : offset + capped_limit]
+        else:
+            qs = qs[:capped_limit]
 
         return qs
 
