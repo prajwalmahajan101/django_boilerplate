@@ -22,6 +22,7 @@ import functools
 from typing import Any, Callable
 
 from core.api_log.dispatch import capture_and_dispatch
+from core.api_log.error_messages import build_error_message
 from core.api_log.models import Direction
 from core.api_log.sanitizers import redact_headers, serialize_body
 from core.utils.logging import _request_id_var
@@ -42,7 +43,10 @@ def log_outbound(service_name: str) -> Callable[[Callable[..., Any]], Callable[.
                 error: dict | None = None
 
                 if exc is not None:
-                    error = {"type": type(exc).__name__, "message": str(exc)}
+                    error = {
+                        "type": type(exc).__name__,
+                        "message": build_error_message(exc),
+                    }
                 else:
                     status_code = getattr(result, "status_code", None)
                     response_body = serialize_body(getattr(result, "body", None))
