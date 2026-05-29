@@ -72,6 +72,18 @@ repos:
         files: ^apps/core/.*\.py$
         pass_filenames: false
 
+      # Catch silent OpenAPI contract regressions — a new DRF view
+      # shipped without an @extend_schema (or *_schema alias) /
+      # serializer_class would render in drf-spectacular as a
+      # generic `object` for data and drop the standard error
+      # envelope responses.
+      - id: check-openapi-metadata
+        name: enforce DRF view OpenAPI metadata
+        entry: python scripts/check_openapi_metadata.py
+        language: system
+        files: ^apps/.*/views\.py$
+        pass_filenames: false
+
       - id: check-stale-refs
         name: check for stale references in docs
         entry: python scripts/check_stale_refs.py
