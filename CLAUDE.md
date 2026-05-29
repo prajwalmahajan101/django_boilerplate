@@ -1,8 +1,8 @@
 # Django Boilerplate
 
 > A Django 6 + DRF starter with vetted core infrastructure. See
-> [README.md](README.md) for quickstart, [docs/](docs/) for the full
-> infrastructure reference, and
+> [README.md](README.md) for quickstart,
+> [docs/INDEX.md](docs/INDEX.md) for the full doc index, and
 > [docs/adding-a-new-app.md](docs/adding-a-new-app.md) for the
 > step-by-step contract when you drop a new domain app next to
 > `apps/accounts/`.
@@ -70,8 +70,10 @@ pre-commit run --all-files          # lint + format + sync check
 ## Default RBAC resources
 
 `ACCOUNT`, `ROLE`, `API_KEY`. Actions: `CREATE`, `READ`, `UPDATE`,
-`DELETE`. Extend `core/enums.py` per-domain; mirror new resources in
-`accounts/backends.py::RBACBackend.MODEL_RESOURCE_MAP`.
+`DELETE`. Extend `core/enums.py` per-domain; register new resources
+from your `AppConfig.ready()` via `core.registries.register_resource()`.
+See [docs/adding-a-new-app.md](docs/adding-a-new-app.md) §3 for the
+worked example and collision policy.
 
 ## Git workflow
 

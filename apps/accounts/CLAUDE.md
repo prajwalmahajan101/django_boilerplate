@@ -1,6 +1,6 @@
 # accounts — Authentication & authorization
 
-> **Auth design:** [../../docs/authentication.md](../../docs/authentication.md) · **Sequence diagrams:** [../../docs/sequence-diagrams.md](../../docs/sequence-diagrams.md) (OAuth login, API-key auth, JWT+RBAC) · **Audit trail:** [../../docs/audit-trail.md](../../docs/audit-trail.md)
+> **Auth design:** [../../docs/authentication.md](../../docs/authentication.md) · **Sequence diagrams:** [../../docs/sequence-diagrams.md](../../docs/sequence-diagrams.md) (OAuth login, API-key auth, JWT+RBAC) · **Audit trail:** [../../docs/audit-trail.md](../../docs/audit-trail.md) · **Data-model reference:** [../../docs/data-model.md](../../docs/data-model.md) (`BaseModel.Meta` inheritance that `User`/`Role`/`APIKey` use) · **Onboarding a new app:** [../../docs/adding-a-new-app.md](../../docs/adding-a-new-app.md) (`accounts/apps.py::ready()` is the worked example of `register_resource`)
 
 Handles all auth (Google OAuth2, JWT, API keys) and RBAC (roles → permissions with `(Resource, Action)` pairs).
 

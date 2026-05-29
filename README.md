@@ -57,10 +57,11 @@ Open `/api/docs/` for Swagger UI and `/admin/` for the Unfold admin.
   `BaseService[T]`, validation contract, page-size cap.
 - **[CHANGELOG.md](CHANGELOG.md)** — release notes.
 
-Full doc index under [`docs/`](docs/) (resilience, thread-safety,
-exceptions, observability, configuration, dependency management,
-deployment, authentication, audit trail, scalability, Celery
-topology).
+Full doc index: **[docs/INDEX.md](docs/INDEX.md)** (resilience,
+thread-safety, exceptions, observability, configuration, dependency
+management, deployment, authentication, audit trail, scalability,
+Celery topology, and the recommended reading order for new
+contributors).
 
 ## Renaming for your project
 

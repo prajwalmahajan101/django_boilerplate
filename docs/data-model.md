@@ -136,6 +136,7 @@ subclass extension points; do not override the public method.
 | `create(data, user)` | `full_clean()` via `BaseModel.save()` |
 | `update(pk, data, user)` | row-level lock via repository, `full_clean()` via `.save()` |
 | `bulk_create(list_)` | **explicit** `full_clean()` loop because Django bypasses `.save()` |
+| `bulk_update(list_, fields)` | **explicit** `full_clean()` loop per instance before `QuerySet.bulk_update()` (also bypasses `.save()`); `validate=False` opt-out for trusted bulk paths |
 | `delete(pk, soft=True, user)` | BFS soft-delete with `MAX_CASCADE_DEPTH=10` |
 
 ### Page-size cap

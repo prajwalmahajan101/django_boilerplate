@@ -1,0 +1,33 @@
+# Stale-reference manifest for scripts/check_stale_refs.py.
+#
+# Append entries here as part of every rename / delete commit. The
+# hook fails the commit if any of these patterns shows up in docs
+# (Markdown), top-level CLAUDE.md, README.md, or app-level CLAUDE.md
+# files. Code is *not* scanned — refactors there are caught by tests
+# and the type checker; this hook only enforces doc / comment hygiene.
+#
+# Format: each item has
+#   pattern  — POSIX extended regex passed to `grep -E`. Anchor with
+#              `\b` where the symbol is a word (e.g. `_safe_run\b`).
+#   replacement — short hint shown when the pattern matches, so the
+#                 author knows what to write instead.
+#
+# Seeded with the three symbols that caused doc-rot across the three
+# prior review cycles. Add new entries here at the same time as you
+# rename / delete things.
+
+patterns:
+  - pattern: 'encrypted_key'
+    replacement: 'APIKey.encrypted_key was renamed to APIKey.secret in 0.2.0.'
+
+  - pattern: 'MODEL_RESOURCE_MAP'
+    replacement: 'RBACBackend.MODEL_RESOURCE_MAP was removed; use core.registries.register_resource() from AppConfig.ready().'
+
+  - pattern: '_cascade_soft_delete\b'
+    replacement: '_cascade_soft_delete was renamed to _cascade_soft_delete_bfs to surface the algorithm.'
+
+  - pattern: '_safe_run\b'
+    replacement: '_safe_run was renamed to _run_task_safely.'
+
+  - pattern: 'hmac\.compare_digest'
+    replacement: 'API-key comparison uses secrets.compare_digest, not hmac.compare_digest.'

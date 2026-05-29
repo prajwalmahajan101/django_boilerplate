@@ -53,3 +53,16 @@ repos:
         language: system
         files: ^apps/core/.*\.py$
         pass_filenames: false
+
+      # Catch doc rot after a rename / delete — the same renamed symbol
+      # had shown up in docs three review cycles in a row before this
+      # hook landed. Patterns + replacement hints live in
+      # scripts/stale_refs.yaml; append there as part of every rename
+      # commit. Scans docs/ + CLAUDE.md + README.md + app-level
+      # CLAUDE.md, skips .code_review/ and CHANGELOG.md.
+      - id: check-stale-refs
+        name: check for stale references in docs
+        entry: python scripts/check_stale_refs.py
+        language: system
+        files: '(^docs/.*\.md$)|(^CLAUDE\.md$)|(^README\.md$)|(^apps/.*/CLAUDE\.md$)|(^scripts/stale_refs\.yaml$)'
+        pass_filenames: false

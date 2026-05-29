@@ -63,9 +63,10 @@ Two coordinated edits — and one call from your `AppConfig.ready()`:
    register_resource("my_app.bar", Resource.BAR)
    ```
 
-   You do **not** edit `RBACBackend.MODEL_RESOURCE_MAP` — the backend
-   reads from the registry, populated by every app's `ready()`. Models
-   you omit fall back to denied; that is the safe default, not a bug.
+   You do **not** edit any peer app's source — the backend reads
+   `core.rbac_registry` (re-exported from `core.registries`), which
+   every app populates from its own `ready()`. Models you omit fall
+   back to denied; that is the safe default, not a bug.
 
    **Collision policy.** `register_resource` is strict by design:
    re-registering the same model against a *different* `Resource`
@@ -156,8 +157,9 @@ Reuse shared envelope helpers from `core.api_schemas` —
 
 - [ ] `apps/my_app/` scaffolded and listed in `INSTALLED_APPS`
 - [ ] Models extend `BaseModel`/`NamedBaseModel`; `Meta` inherits
-- [ ] `Resource` enum extended; `MODEL_RESOURCE_MAP` extended; views
-      declare `resource` + `action`
+- [ ] `Resource` enum extended; models registered via
+      `core.registries.register_resource()` in `AppConfig.ready()`;
+      views declare `resource` + `action`
 - [ ] Services use `BaseService[T]`, per-call instantiation
 - [ ] Repositories own write locks
 - [ ] Exceptions subclass typed bases; `AppConfig.ready()` registers

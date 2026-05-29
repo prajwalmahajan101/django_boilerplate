@@ -13,6 +13,45 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `CHANGELOG.md` — this file. Seeded with the recent batches.
 - `docs/adding-a-new-app.md` now documents the
   `register_resource` collision policy.
+- `docs/INDEX.md` — documentation landing page with topic grouping
+  and recommended reading order for new contributors. Linked from
+  `README.md` and the top-level `CLAUDE.md`.
+- `apps/core/registries/__init__.py` — canonical namespace re-
+  exporting `register_resource` (RBAC) and `register_resilience_service`
+  so domain apps have one extension entrypoint.
+- `apps/core/resilience/throttles/global_lua.py` — process-wide
+  Lua-script cache for `GlobalThrottle`, extracted from `valkey_impl.py`.
+- `scripts/check_stale_refs.py` + `scripts/stale_refs.yaml` +
+  pre-commit hook `check-stale-refs`. Doc rot from a rename / delete
+  now fails the commit; manifest is appended in the same PR as the
+  rename.
+- `bulk_update` row added to the Write API table in
+  `docs/data-model.md`.
+
+### Changed
+- `apps/core/api_schemas.py` split into a package
+  (`api_schemas/{envelope,responses,system}.py` with re-exports).
+  Existing imports unchanged.
+- `apps/accounts/CLAUDE.md` now links to `docs/data-model.md` and
+  `docs/adding-a-new-app.md`.
+- `config/celery.py` and `config/settings/__init__.py`: convert the
+  duplicated `sys.path` comment into a proper Decision Record
+  explaining why duplication is structural (circular import via
+  `config/__init__.py` importing celery) and why it is safe (the
+  drift guard catches divergence at boot).
+- `CLAUDE.md` Default RBAC resources section now points at
+  `core.registries.register_resource()` instead of the deleted
+  `RBACBackend.MODEL_RESOURCE_MAP`.
+
+### Fixed
+- ISSUE-025 — stale `RBACBackend.MODEL_RESOURCE_MAP` references in
+  `CLAUDE.md:74` and `docs/adding-a-new-app.md:159` (checklist item)
+  updated to the `register_resource()` pattern. Rephrased the body
+  reference at `docs/adding-a-new-app.md:66` so the symbol name no
+  longer appears anywhere on the doc surface.
+- ISSUE-026 — `bulk_update` was missing from the Write API table
+  in `docs/data-model.md`; added with its explicit-`full_clean`
+  contract matching `bulk_create`.
 
 ### Changed
 - `BaseService.list()` page-size cap log promoted from `logger.debug`
