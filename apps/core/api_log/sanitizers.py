@@ -15,11 +15,15 @@ Settings honoured:
 
 from __future__ import annotations
 
+import functools
 import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from django.conf import settings
+from django.test.signals import setting_changed
+
+from core.utils.log_sanitization import sanitize_for_log
 
 UNSET: Any = object()
 
@@ -33,9 +37,18 @@ _DEFAULT_SENSITIVE = (
 )
 
 
-def _sensitive_headers() -> set[str]:
+@functools.lru_cache(maxsize=1)
+def _sensitive_headers() -> frozenset[str]:
     raw = getattr(settings, "API_LOG_SENSITIVE_HEADERS", _DEFAULT_SENSITIVE) or ()
-    return {h.lower() for h in raw}
+    return frozenset(h.lower() for h in raw)
+
+
+def _bust_sensitive_headers_cache(sender, setting, **kwargs):  # noqa: ANN001
+    if setting == "API_LOG_SENSITIVE_HEADERS":
+        _sensitive_headers.cache_clear()
+
+
+setting_changed.connect(_bust_sensitive_headers_cache)
 
 
 def redact_headers(headers: dict[str, str]) -> dict[str, str]:
@@ -104,6 +117,12 @@ def summarise_body_for_audit(value: Any) -> Any:
                 else:
                     entry["value"] = str(item)
                 fields.append(entry)
+        scalar_view = {f["name"]: f.get("value") for f in fields if "value" in f}
+        redacted_scalars = sanitize_for_log(scalar_view)
+        for entry in fields:
+            name = entry["name"]
+            if "value" in entry and name in redacted_scalars:
+                entry["value"] = redacted_scalars[name]
         return {"__multipart__": True, "fields": fields}
 
     if hasattr(value, "_fields") and value.__class__.__name__ in {
@@ -146,24 +165,47 @@ def serialize_error_body(body: Any, max_len: int | None = None) -> str | None:
 def serialize_body(value: Any, max_len: int | None = None) -> str | None:
     """Render ``value`` as a string body of at most ``max_len`` chars.
 
-    Strings pass through; bytes are UTF-8-decoded with errors replaced;
-    everything else is JSON-dumped with ``default=str`` so the call
-    never raises on unexpected payload shapes.
+    Sensitive fields (``password``, ``token``, ``api_key`` …) are
+    redacted via :func:`sanitize_for_log` before the payload is
+    JSON-encoded — the rendered string lands in the persistent
+    ``api_logs`` table, so plaintext credentials must never reach it.
+    Strings/bytes that look like JSON are parsed and recursively
+    redacted; non-JSON strings fall back to scalar sanitisation
+    (control-char escaping, length cap).
     """
     if value is None or value is UNSET:
         return None
     if max_len is None:
         max_len = int(getattr(settings, "API_LOG_MAX_BODY_LEN", 4096))
     try:
-        if isinstance(value, str):
-            text = value
-        elif isinstance(value, (bytes, bytearray)):
-            text = bytes(value).decode("utf-8", errors="replace")
+        structured: Any
+        if isinstance(value, (bytes, bytearray)):
+            decoded = bytes(value).decode("utf-8", errors="replace")
+            structured = _try_parse_json(decoded, fallback=decoded)
+        elif isinstance(value, str):
+            structured = _try_parse_json(value, fallback=value)
         else:
-            text = json.dumps(value, default=str)
+            structured = value
+
+        redacted = sanitize_for_log(structured, max_string_length=max_len)
+        if isinstance(redacted, str):
+            text = redacted
+        else:
+            text = json.dumps(redacted, default=str)
         return truncate(text, max_len)
     except Exception:
         return None
+
+
+def _try_parse_json(text: str, fallback: Any) -> Any:
+    """Return ``json.loads(text)`` only when it yields a dict or list."""
+    try:
+        parsed = json.loads(text)
+    except (ValueError, TypeError):
+        return fallback
+    if isinstance(parsed, (dict, list)):
+        return parsed
+    return fallback
 
 
 def compute_ttl() -> int | None:

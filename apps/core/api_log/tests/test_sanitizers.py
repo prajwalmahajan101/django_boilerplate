@@ -70,6 +70,31 @@ class SerializeBodyTests(SimpleTestCase):
     def test_bytes_decoded(self) -> None:
         self.assertEqual(serialize_body(b"hello"), "hello")
 
+    def test_dict_redacts_sensitive_keys(self) -> None:
+        out = serialize_body(
+            {"username": "alice", "password": "p@ss", "api_key": "sk_live_x"}
+        )
+        assert out is not None
+        self.assertNotIn("p@ss", out)
+        self.assertNotIn("sk_live_x", out)
+        self.assertIn("alice", out)
+
+    def test_json_string_body_redacted(self) -> None:
+        out = serialize_body('{"token": "tk_abc", "name": "bob"}')
+        assert out is not None
+        self.assertNotIn("tk_abc", out)
+        self.assertIn("bob", out)
+
+    def test_json_bytes_body_redacted(self) -> None:
+        out = serialize_body(b'{"authorization": "Bearer x", "id": 1}')
+        assert out is not None
+        self.assertNotIn("Bearer x", out)
+
+    def test_nested_dict_redacted(self) -> None:
+        out = serialize_body({"user": {"secret": "s", "name": "n"}})
+        assert out is not None
+        self.assertNotIn('"s"', out)
+
 
 class ComputeTtlTests(SimpleTestCase):
     @override_settings(API_LOG_TTL_DAYS=0)
