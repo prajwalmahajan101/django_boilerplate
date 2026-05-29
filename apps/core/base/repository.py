@@ -1,24 +1,24 @@
 """``BaseRepository`` — opt-in CRUD facade over the Django ORM.
 
 Django boilerplate uses :class:`BaseService` for the standard
-write paths (validation, audit-stamping, soft-delete cascade, hooks).
-This module adds a thin sync repository surface that mirrors the
-FastAPI sibling's vocabulary (``get_by_id``, ``add``, ``add_all``,
+write paths (hooks, soft-delete cascade, …). This module adds a
+thin sync repository surface that mirrors the FastAPI sibling's
+vocabulary (``get_by_id``, ``add``, ``add_all``, ``update``,
 ``delete_hard``, etc.) so cross-repo developers see the same verbs.
 
-**Not a replacement for ``BaseService``.** The repository skips
-behaviour that ``BaseService`` guarantees:
+**Parity with ``BaseService`` — what is and isn't preserved:**
 
-* ``full_clean()`` model validation (run automatically by
-  :meth:`BaseModel.save` on the service path).
-* ``created_by`` / ``updated_by`` audit-field stamping.
-* ``pre_*`` / ``post_*`` hook execution.
-* Soft-delete cascade BFS.
-
-Use this only when a test or domain class wants ORM access through
-a thin abstraction (easier to mock than the manager directly,
-easier to swap out in isolation). Production write paths should
-keep using ``BaseService``.
+* ✓ ``full_clean()`` model validation runs on every write —
+  ``add``/``update`` via :meth:`BaseModel.save`, ``add_all`` via an
+  explicit loop (``bulk_create`` bypasses ``.save()``, mirroring
+  :meth:`BaseService.bulk_create`).
+* ✓ ``created_by`` / ``updated_by`` are stamped via
+  :func:`core.base.audit.apply_audit_fields` when the caller passes
+  ``user=`` and the model carries the field.
+* ✗ ``pre_*`` / ``post_*`` hooks do **not** fire — if you need them,
+  use :class:`BaseService`.
+* ✗ Soft-delete cascade BFS does **not** run — ``delete_hard`` /
+  ``delete_hard_by_id`` are explicit hard deletes.
 
 Bulk-update SQL (``Manager.filter(...).update(...)``) is **not
 exposed here on purpose** — it bypasses ``auto_now``,
@@ -34,6 +34,8 @@ from typing import Any, Generic, TypeVar
 
 from django.db import models, transaction
 from django.db.models import QuerySet
+
+from core.base.audit import apply_audit_fields
 
 ModelType = TypeVar("ModelType", bound=models.Model)
 
@@ -103,23 +105,39 @@ class BaseRepository(Generic[ModelType]):
 
     @classmethod
     @transaction.atomic
-    def add(cls, instance: ModelType) -> ModelType:
+    def add(cls, instance: ModelType, *, user: Any | None = None) -> ModelType:
+        apply_audit_fields(instance, user, on_create=True)
         instance.save()
         return instance
 
     @classmethod
     @transaction.atomic
-    def add_all(cls, instances: list[ModelType]) -> list[ModelType]:
+    def add_all(
+        cls,
+        instances: list[ModelType],
+        *,
+        user: Any | None = None,
+    ) -> list[ModelType]:
+        for instance in instances:
+            apply_audit_fields(instance, user, on_create=True)
+            instance.full_clean()
         return list(cls._manager().bulk_create(instances))
 
     @classmethod
     @transaction.atomic
-    def update(cls, pk: Any, data: dict[str, Any]) -> ModelType | None:
+    def update(
+        cls,
+        pk: Any,
+        data: dict[str, Any],
+        *,
+        user: Any | None = None,
+    ) -> ModelType | None:
         instance = cls._manager().select_for_update().filter(pk=pk).first()
         if instance is None:
             return None
         for key, value in data.items():
             setattr(instance, key, value)
+        apply_audit_fields(instance, user, on_create=False)
         instance.save()
         return instance
 
