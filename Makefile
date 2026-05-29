@@ -36,6 +36,9 @@ AUDIT_SYSTEM_DEPS := apt-get update -qq && apt-get install -y -qq --no-install-r
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 
+audit-hot-path:  ## Profile capture_and_dispatch overhead (p50/p95/p99)
+	python scripts/profile_audit_path.py
+
 audit:  ## Run pip-audit against requirements/prod.txt (ephemeral container)
 	docker run --rm -v "$(CURDIR)/requirements:/reqs:ro" $(PYTHON_IMAGE) \
 		sh -c "$(AUDIT_SYSTEM_DEPS) && pip install --quiet pip-audit==$(PIP_AUDIT_VERSION) && pip-audit -r /reqs/prod.txt"
