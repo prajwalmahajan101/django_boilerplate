@@ -40,7 +40,7 @@ class BaseService(ABC, Generic[ModelType]):
     allowed_filter_fields: frozenset[str] | None = None
     allowed_order_fields: frozenset[str] | None = None
 
-    # Maximum depth for ``_cascade_soft_delete`` recursion. Beyond this
+    # Maximum depth for ``_cascade_soft_delete_bfs`` recursion. Beyond this
     # the cascade short-circuits with a WARNING log — protects against
     # circular soft-FK chains introduced by future contributors.
     MAX_CASCADE_DEPTH: int = 10
@@ -354,7 +354,7 @@ class BaseService(ABC, Generic[ModelType]):
             instance.save(update_fields=update_fields)
 
             if cascade_soft_delete:
-                self._cascade_soft_delete(instance, user=user)
+                self._cascade_soft_delete_bfs(instance, user=user)
         else:
             instance.delete()
 
@@ -362,7 +362,7 @@ class BaseService(ABC, Generic[ModelType]):
         return True
 
     @classmethod
-    def _cascade_soft_delete(cls, instance: ModelType, user: Any | None = None) -> None:
+    def _cascade_soft_delete_bfs(cls, instance: ModelType, user: Any | None = None) -> None:
         """Soft-delete related objects linked via CASCADE foreign keys (BFS).
 
         Walks the related-object graph breadth-first with a depth cap of

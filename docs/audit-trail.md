@@ -49,7 +49,7 @@ which hook.
 | `service.create(data, user)` | **user** | — | auto (INSERT) | auto (`.save()`) | `BaseService.create` sets `created_by` when the model has the field. |
 | `service.update(pk, data, user)` | unchanged | **user** | unchanged | auto (`.save()`) | `BaseService.update` sets `updated_by` after `pre_update`. |
 | `service.delete(pk, user)` — soft delete, main row | unchanged | **user** | unchanged | explicit (`.save(update_fields=[..., "updated_at"])`) | `BaseService.delete` includes `updated_at` and `updated_by_id` in `update_fields`. |
-| `service.delete(pk, user)` — cascade to CASCADE FK children | unchanged | **user** (propagated) | unchanged | explicit (`QuerySet.update(updated_at=..., updated_by=...)`) | `_cascade_soft_delete(instance, user=user)` passes both fields to `.update()` for every related queryset. |
+| `service.delete(pk, user)` — cascade to CASCADE FK children | unchanged | **user** (propagated) | unchanged | explicit (`QuerySet.update(updated_at=..., updated_by=...)`) | `_cascade_soft_delete_bfs(instance, user=user)` passes both fields to `.update()` for every related queryset. |
 | `service.delete(pk, user)` — subclass `post_delete` cascading manually | unchanged | **user** (propagated) | unchanged | explicit | Subclass-overridden `post_delete(instance, user=None)` runs `bulk_update`. Override **MUST** accept `user` and forward it. |
 | Bulk operations via `service.bulk_update(instances, fields)` | unchanged | only if caller set it on each instance | unchanged | only if `"updated_at"` is in `fields` | `bulk_update` is a thin wrapper — audit stamping is the caller's responsibility. |
 | System-triggered updates (no user) | unchanged | **NOT stamped** | unchanged | auto / explicit | When the actor is the system (scheduled job, signal handler), pass `user=None` so audit doesn't misattribute the change. |
@@ -67,10 +67,10 @@ flowchart TD
     D --> E[pre_delete instance]
     E --> F[instance.is_active = False<br/>set updated_by]
     F --> G[instance.save update_fields=is_active,<br/>updated_at, updated_by_id]
-    G --> H["_cascade_soft_delete(instance, user)"]
+    G --> H["_cascade_soft_delete_bfs(instance, user)"]
     H --> I{Iterate related<br/>CASCADE FK descriptors}
     I --> J["For each related queryset:<br/>related.filter(is_active=True)<br/>.update(is_active=False,<br/>updated_at=now,<br/>updated_by=user)"]
-    J --> K[Recurse into each child<br/>_cascade_soft_delete child, user]
+    J --> K[Recurse into each child<br/>_cascade_soft_delete_bfs child, user]
     K --> I
     I --> L["post_delete(instance, user)"]
     L --> M{Subclass override?}

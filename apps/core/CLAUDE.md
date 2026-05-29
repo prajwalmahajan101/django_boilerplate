@@ -28,6 +28,6 @@ Never mounted as a standalone feature. Shared infrastructure only. **Nothing in 
 
 - **`BaseService` writes always validate.** `create()`, `update()`, and `bulk_create()` all run `full_clean()` — via `BaseModel.save()` for the single-row paths, via an explicit loop for `bulk_create` (which bypasses `.save()`). Serializers still own request-shape validation; the service layer is the second line of defense, not a substitute. Pass `skip_validation=True` to `BaseModel.save()` only from fixtures / management commands where validation has already run.
 - `BaseService.delete(pk, soft=True, user)` is the only correct delete path. Hard delete exists but bypasses cascade audit.
-- `_cascade_soft_delete(instance, user=None)` and `post_delete(instance, user=None)` both accept `user` — subclass overrides MUST propagate it so cascade rows get `updated_by` stamped. See [docs/audit-trail.md](../../docs/audit-trail.md).
+- `_cascade_soft_delete_bfs(instance, user=None)` and `post_delete(instance, user=None)` both accept `user` — subclass overrides MUST propagate it so cascade rows get `updated_by` stamped. See [docs/audit-trail.md](../../docs/audit-trail.md).
 - Exception status-code map is lazy-frozen with invalidation on write (double-checked locking). Register new exceptions via `register_exception_mapping()`, not by editing the map directly.
 - `get_engine()` caches one SQLAlchemy engine per URL per process; it applies 5s connect + 30s statement timeout. Do NOT share that engine across Django ORM transactions.

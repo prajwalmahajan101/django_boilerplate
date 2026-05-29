@@ -86,7 +86,7 @@ class FireAndForgetQueue:
                     break
                 continue
             try:
-                self._executor.submit(self._safe_run, fn)
+                self._executor.submit(self._run_task_safely, fn)
             except RuntimeError:
                 # Executor is shutting down — drop the task. We're tearing
                 # down; the cost of losing best-effort work is by design.
@@ -96,7 +96,7 @@ class FireAndForgetQueue:
         self._drained.set()
 
     @staticmethod
-    def _safe_run(fn: Callable[[], None]) -> None:
+    def _run_task_safely(fn: Callable[[], None]) -> None:
         try:
             fn()
         except Exception:  # noqa: BLE001 — best-effort: log + drop
