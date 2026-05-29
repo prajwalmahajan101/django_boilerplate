@@ -99,7 +99,7 @@ SITE_ID = 1
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
+    "core.middleware.selective_cors.SelectiveCORSMiddleware",
     "core.middleware.security_headers.SecurityHeadersMiddleware",
     "core.middleware.body_limit.ContentLengthLimitMiddleware",
     "core.middleware.request_id.RequestIDMiddleware",
@@ -286,6 +286,15 @@ if _cors_origins.strip() == "*":
 else:
     CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors_origins.split(",") if o.strip()]
     CORS_ALLOW_CREDENTIALS = True
+
+# Path prefixes that bypass CORS entirely (server-to-server webhooks,
+# internal callbacks). Comma-separated env value; empty disables the
+# bypass and SelectiveCORSMiddleware behaves identically to the
+# upstream CorsMiddleware.
+_cors_excluded = os.getenv("CORS_EXCLUDED_PREFIXES", "").strip()
+CORS_EXCLUDED_PREFIXES = tuple(
+    p.strip() for p in _cors_excluded.split(",") if p.strip()
+)
 
 # --------------------------------------------------------------------------
 # Cache Configuration (dual-cache: default + rate_limit)
