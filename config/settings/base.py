@@ -100,6 +100,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    "core.middleware.security_headers.SecurityHeadersMiddleware",
     "core.middleware.request_id.RequestIDMiddleware",
     "core.middleware.exception_logging.ExceptionLoggingMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -622,6 +623,15 @@ ASSET_ALLOWED_MIME_TYPES = (
 # See docs/observability.md for the full activation procedure and the
 # cardinality contract that every record_* call site honours.
 METRICS_ENABLED = os.getenv("METRICS_ENABLED", "false").lower() in {"1", "true", "yes"}
+
+# --------------------------------------------------------------------------
+# Security response headers (SecurityHeadersMiddleware)
+# --------------------------------------------------------------------------
+# Stamps HSTS / CSP / X-Frame-Options / nosniff / Referrer-Policy /
+# Permissions-Policy on every response. HSTS is skipped automatically when
+# DJANGO_ENV ∈ {dev,development,test,local} or DEBUG=True so a developer
+# hitting http://localhost cannot pin their browser to HTTPS for a year.
+SECURITY_HEADERS_ENABLED = _env_bool("SECURITY_HEADERS_ENABLED", "true")
 # Comma-separated IP / CIDR allowlist. Default trusts only loopback so the
 # endpoint is harmless even when METRICS_ENABLED is on but the network
 # perimeter is incomplete.
