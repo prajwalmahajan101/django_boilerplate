@@ -23,6 +23,7 @@ The request path's shared singletons are all already thread-safe. The table belo
 | Resilience circuit-breaker registry | `threading.Lock` | `apps/core/resilience/*` |
 | `ResilienceRegistry.register_service` write | `threading.Lock` (same lock as `get_breaker`) | `apps/core/resilience/registry.py::ResilienceRegistry.register_service` |
 | `FireAndForgetQueue._dropped` counter | dedicated `threading.Lock` | `apps/core/dispatch/fire_and_forget.py::FireAndForgetQueue.submit` |
+| HTTP-client DNS pin (SSRF guard) | `threading.local()` keyed by hostname | `apps/core/utils/http_client.py::_pinned_dns` (set via `_pin_dns` context manager) |
 
 ## Rules for new code
 

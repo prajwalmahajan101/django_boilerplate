@@ -516,6 +516,52 @@ Features:
 - Raises `TransientError` (5xx) or `ExternalTimeoutError` (timeout)
 - Per-`max_attempts` Tenacity state caching
 
+## SSRF defense-in-depth
+
+`core.utils.http_client.make_http_request` enforces three independent
+layers before a single packet leaves the process. Each layer answers a
+different question; none on its own is enough.
+
+| Layer | Question answered | Where |
+|---|---|---|
+| Private-IP guard (DNS-pinned) | "Does this hostname resolve to public IP space, and will the request use the *same* resolution we validated?" | `_resolve_and_validate` + `_pin_dns` in `apps/core/utils/http_client.py` |
+| Outbound allowlist | "Did the deploy operator sanction this destination?" | `_assert_url_allowlisted` keyed on `settings.OUTBOUND_URL_ALLOWLIST` |
+| `trusted=True` opt-out | "Is this URL from an admin-configured trust boundary (e.g. a `Partner` row), so the private-IP question is already answered upstream?" | the `trusted` kwarg to `make_http_request` |
+
+### The DNS-pinned guard
+
+Until [ISSUE-028] the private-IP guard called `socket.getaddrinfo`
+to validate the hostname, then `requests` did its **own** DNS lookup
+at request time. An attacker controlling DNS for an attacker-owned
+hostname could return a public IP on the first lookup (passing the
+guard) and a private IP on the second (hitting internal
+infrastructure) — the classic DNS-rebinding TOCTOU.
+
+The fix: `_resolve_and_validate` now returns the resolved IPs, and
+`make_http_request` enters a thread-local DNS pin (`_pin_dns`) that
+short-circuits `socket.getaddrinfo` for that hostname to exactly the
+validated IPs. The pin survives retries (it wraps the Tenacity
+decorator) so every attempt uses the same resolution.
+
+### `OUTBOUND_URL_ALLOWLIST` remains load-bearing
+
+Even with the DNS pin in place, the allowlist is still the primary
+SSRF defense in production for two reasons:
+
+1. **Redirects.** `requests` follows redirects by default, and a
+   redirect to a fresh hostname is *not* re-validated by the guard.
+   The allowlist's host check applies to the initial URL only; if
+   you call partners that may redirect, set `allow_redirects=False`
+   in your `requests` call or validate per-hop.
+2. **`trusted=True` skips the private-IP guard entirely.** That
+   escape hatch exists for admin-configured trust boundaries, but
+   it means the allowlist is the only remaining destination check.
+
+Local / dev / test deployments often run with `OUTBOUND_URL_ALLOWLIST=*`
+or empty (permissive). Prod and UAT must set it explicitly per
+environment, and CI / staging should ideally mirror prod's allowlist
+to surface configuration drift before deploy.
+
 ## Monitoring
 
 ### Circuit Breaker Stats

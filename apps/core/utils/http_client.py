@@ -8,6 +8,11 @@ Provides a reusable ``make_http_request`` function that wraps the
 - Structured error mapping to infrastructure exceptions
 - Connection pooling via a module-level ``requests.Session``
 - Sanitized logging (no secrets leak into logs)
+- DNS-pinned SSRF guard: ``_resolve_and_validate`` resolves the
+  hostname once and pins those IPs for the lifetime of the call so
+  ``requests`` uses the same resolution it just validated — closes
+  the classic DNS-rebinding TOCTOU where the validation and the
+  request did independent DNS lookups.
 
 Usage::
 
@@ -25,6 +30,7 @@ Usage::
 
 from __future__ import annotations
 
+import contextlib
 import ipaddress
 import logging
 import socket
@@ -92,8 +98,14 @@ def _assert_url_allowlisted(url: str) -> None:
     )
 
 
-def _assert_public_url(url: str, *, strict: bool = True) -> None:
+def _resolve_and_validate(url: str, *, strict: bool = True) -> tuple[str | None, list[str]]:
     """Reject URLs that resolve to non-public IP space (SSRF defense).
+
+    Returns ``(host, validated_addrs)`` — the addresses are the SAME ones
+    pinned by ``_pinned_dns`` during the subsequent HTTP request. This
+    closes the DNS-rebinding TOCTOU: validation and request share one
+    resolution. Returning the IPs (instead of validating and throwing
+    them away) is the load-bearing change vs the pre-pinning version.
 
     Checks every address returned by ``getaddrinfo`` — a single hostname
     can resolve to multiple IPs, and any one pointing at internal space
@@ -111,7 +123,8 @@ def _assert_public_url(url: str, *, strict: bool = True) -> None:
         outbound request.
 
     Disabled when ``settings.SSRF_BLOCK_PRIVATE_IPS`` is falsy — set
-    ``False`` in tests that use localhost mock servers.
+    ``False`` in tests that use localhost mock servers. In that mode
+    the returned host/addrs are empty so the caller skips pinning.
 
     Callers that originate from admin-configured trust boundaries (e.g. a
     ``Partner`` row) bypass this check by passing ``trusted=True`` to
@@ -122,7 +135,7 @@ def _assert_public_url(url: str, *, strict: bool = True) -> None:
         InvalidOutboundURLError: registered at HTTP 400 in handler.py.
     """
     if not getattr(settings, "SSRF_BLOCK_PRIVATE_IPS", True):
-        return
+        return None, []
 
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
@@ -136,10 +149,10 @@ def _assert_public_url(url: str, *, strict: bool = True) -> None:
     # Literal IPs short-circuit DNS resolution entirely.
     try:
         literal = ipaddress.ip_address(host)
-        addrs = {str(literal)}
+        addrs = [str(literal)]
     except ValueError:
         try:
-            addrs = {info[4][0] for info in socket.getaddrinfo(host, None)}
+            addrs = list({info[4][0] for info in socket.getaddrinfo(host, None)})
         except socket.gaierror as exc:
             if strict:
                 raise InvalidOutboundURLError(
@@ -152,7 +165,7 @@ def _assert_public_url(url: str, *, strict: bool = True) -> None:
                 "SSRF validator: %s did not resolve (strict=False, accepting).",
                 host,
             )
-            return
+            return host, []
 
     for addr in addrs:
         ip = ipaddress.ip_address(addr)
@@ -167,6 +180,85 @@ def _assert_public_url(url: str, *, strict: bool = True) -> None:
             raise InvalidOutboundURLError(
                 f"URL resolves to a non-public address ({addr})."
             )
+    return host, addrs
+
+
+def _assert_public_url(url: str, *, strict: bool = True) -> None:
+    """Backward-compatible thin wrapper around ``_resolve_and_validate``.
+
+    Model validators (admin save paths) call this for its side effect
+    only. ``make_http_request`` now uses ``_resolve_and_validate``
+    directly so the resolved IPs can be pinned across the validate →
+    request boundary, closing the DNS-rebinding TOCTOU.
+    """
+    _resolve_and_validate(url, strict=strict)
+
+
+# DNS pinning: when ``make_http_request`` validates a hostname's IPs it
+# stashes them here, keyed by hostname, on the current thread. The
+# replacement ``socket.getaddrinfo`` below short-circuits to these IPs
+# so the subsequent ``requests`` call sees the *same* resolution rather
+# than a fresh DNS lookup that an attacker controlling the zone could
+# flip to a private IP (classic DNS-rebinding bypass of hostname guards).
+# Thread-local because Gunicorn gthread workers share the process; one
+# call's pin must not leak into another concurrent call.
+_pinned_dns = threading.local()
+_orig_getaddrinfo = socket.getaddrinfo
+
+
+def _patched_getaddrinfo(host, port, *args, **kwargs):
+    """``socket.getaddrinfo`` replacement that honours the per-thread pin."""
+    pins = getattr(_pinned_dns, "pins", None)
+    if pins and host in pins:
+        # Synthesize one addrinfo tuple per pinned IP. Family is detected
+        # from the IP literal so v4 / v6 both work; type/proto are set to
+        # TCP-style defaults since this guard only runs on HTTP calls.
+        result = []
+        for addr in pins[host]:
+            try:
+                ip_obj = ipaddress.ip_address(addr)
+            except ValueError:
+                continue
+            family = socket.AF_INET6 if ip_obj.version == 6 else socket.AF_INET
+            sockaddr = (addr, port or 0, 0, 0) if ip_obj.version == 6 else (addr, port or 0)
+            result.append((family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", sockaddr))
+        if result:
+            return result
+    return _orig_getaddrinfo(host, port, *args, **kwargs)
+
+
+# Install the patch once. Idempotent — a re-import (e.g. autoreload)
+# detects the already-patched function via attribute marker.
+if not getattr(socket.getaddrinfo, "_ssrf_pinned", False):
+    _patched_getaddrinfo._ssrf_pinned = True  # type: ignore[attr-defined]
+    socket.getaddrinfo = _patched_getaddrinfo  # type: ignore[assignment]
+
+
+@contextlib.contextmanager
+def _pin_dns(host: str | None, addrs: list[str]):
+    """Pin ``host → addrs`` for the calling thread for the block's duration.
+
+    No-op when either ``host`` or ``addrs`` is empty (validation was
+    skipped because ``SSRF_BLOCK_PRIVATE_IPS=False`` or the lenient
+    branch fired). The teardown clears only this host's entry so
+    nested calls don't trample each other.
+    """
+    if not host or not addrs:
+        yield
+        return
+    pins = getattr(_pinned_dns, "pins", None)
+    if pins is None:
+        pins = {}
+        _pinned_dns.pins = pins
+    prior = pins.get(host)
+    pins[host] = list(addrs)
+    try:
+        yield
+    finally:
+        if prior is None:
+            pins.pop(host, None)
+        else:
+            pins[host] = prior
 
 # Cache built retry decorators by max_attempts to preserve Tenacity state.
 # Locked via double-checked locking — matches the _engine_cache pattern
@@ -249,8 +341,12 @@ def make_http_request(
         max_attempts = 1
 
     # SSRF (private-IP) check is the only thing ``trusted`` opts out of.
+    # Returned IPs are pinned across the validate → request boundary so
+    # the requests call uses the *same* DNS resolution we just validated.
+    pin_host: str | None = None
+    pin_addrs: list[str] = []
     if not trusted:
-        _assert_public_url(url)
+        pin_host, pin_addrs = _resolve_and_validate(url, strict=True)
     # The allowlist is orthogonal to SSRF — it enforces the deploy-time
     # sanctioned-destination list and must apply to trusted call sites too.
     _assert_url_allowlisted(url)
@@ -270,9 +366,10 @@ def make_http_request(
                 )
                 _retry_cache[max_attempts] = decorator
 
-    return decorator(_do_request)(
-        method, url, headers, json_body, timeout, auth, raw_bytes
-    )
+    with _pin_dns(pin_host, pin_addrs):
+        return decorator(_do_request)(
+            method, url, headers, json_body, timeout, auth, raw_bytes
+        )
 
 
 def _do_request(

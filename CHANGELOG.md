@@ -29,6 +29,19 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   bucket. Set `NUM_PROXIES=1` for nginx, `NUM_PROXIES=2` for
   ALB + nginx. (ISSUE-029)
 
+### Security
+- SSRF guard is now DNS-pinned across the validate → request
+  boundary, closing the DNS-rebinding TOCTOU. Previously
+  `_assert_public_url` resolved the hostname via `getaddrinfo`
+  and validated each IP, then `requests` did its own DNS lookup
+  at request time — an attacker controlling the zone could
+  return a public IP on the first lookup and a private IP on
+  the second. The new `_resolve_and_validate` returns the IPs,
+  and `make_http_request` pins them on a thread-local before
+  `requests` runs so the resolution is shared. `OUTBOUND_URL_ALLOWLIST`
+  remains load-bearing — see `docs/resilience.md` for why
+  (redirects + the `trusted=True` opt-out). (ISSUE-028)
+
 ### Documentation
 - `EncryptedCharField` class docstring now warns that equality
   lookups against the column do not work — Fernet's random IV
