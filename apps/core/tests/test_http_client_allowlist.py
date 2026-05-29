@@ -69,7 +69,7 @@ class TrustedFlagAllowlistTests(SimpleTestCase):
 
     @override_settings(OUTBOUND_URL_ALLOWLIST=["partner.example.com"])
     def test_trusted_allowlisted_host_is_accepted(self) -> None:
-        with patch("core.utils.http_client._do_request") as do_request:
+        with patch("core.utils.http_client._client._do_request") as do_request:
             do_request.return_value = object()
             result = make_http_request(
                 method="GET",
@@ -90,7 +90,7 @@ class DNSPinningTests(SimpleTestCase):
     @override_settings(SSRF_BLOCK_PRIVATE_IPS=True)
     def test_resolve_and_validate_returns_addrs(self) -> None:
         """_resolve_and_validate returns the IPs it validated so they can be pinned."""
-        with patch("core.utils.http_client.socket.getaddrinfo", return_value=self._addrinfo("8.8.8.8")):
+        with patch("core.utils.http_client._client.socket.getaddrinfo", return_value=self._addrinfo("8.8.8.8")):
             host, addrs = _resolve_and_validate("https://attacker.example/x", strict=True)
         self.assertEqual(host, "attacker.example")
         self.assertEqual(addrs, ["8.8.8.8"])
@@ -102,7 +102,7 @@ class DNSPinningTests(SimpleTestCase):
         flipped DNS to a private address. This is the regression that would
         have failed before the pin landed."""
         # Validation phase: DNS returns a public IP.
-        with patch("core.utils.http_client.socket.getaddrinfo", return_value=self._addrinfo("8.8.8.8")):
+        with patch("core.utils.http_client._client.socket.getaddrinfo", return_value=self._addrinfo("8.8.8.8")):
             host, addrs = _resolve_and_validate("https://attacker.example/x", strict=True)
 
         # Pin the validated IPs (as make_http_request does internally).
@@ -111,7 +111,7 @@ class DNSPinningTests(SimpleTestCase):
             # Rebind attack: the next system getaddrinfo would return a
             # private IP. With the pin installed, getaddrinfo must return
             # the pinned public IP — not the rebound private IP.
-            with patch("core.utils.http_client._orig_getaddrinfo", return_value=self._addrinfo("10.0.0.1")):
+            with patch("core.utils.http_client._client._orig_getaddrinfo", return_value=self._addrinfo("10.0.0.1")):
                 resolved = socket.getaddrinfo(host, 443)
             ips = [info[4][0] for info in resolved]
             self.assertIn("8.8.8.8", ips, "pinned public IP should be used")
@@ -121,7 +121,7 @@ class DNSPinningTests(SimpleTestCase):
 
     @override_settings(SSRF_BLOCK_PRIVATE_IPS=True)
     def test_resolve_and_validate_rejects_private_ip(self) -> None:
-        with patch("core.utils.http_client.socket.getaddrinfo", return_value=self._addrinfo("10.0.0.1")):
+        with patch("core.utils.http_client._client.socket.getaddrinfo", return_value=self._addrinfo("10.0.0.1")):
             with self.assertRaises(BaseCustomError) as ctx:
                 _resolve_and_validate("https://internal.example/x", strict=True)
         self.assertIn("non-public", str(ctx.exception))
