@@ -123,17 +123,30 @@ def token_refresh(request: Request) -> Response:
 
     try:
         token = RefreshToken(refresh_token)
-        # Rotate refresh tokens and blacklist the old one.
-        # Create new token BEFORE blacklisting old one — if
-        # new-token creation fails the user still has a valid session.
         user = UserRepository().get_by_id(int(token["user_id"]))
         if not user or not user.is_active:
             return ErrorResponse(
                 message="Invalid or expired refresh token",
                 status_code=status.HTTP_401_UNAUTHORIZED,
             )
+
+        # Blacklist the old refresh token FIRST. If we minted the new
+        # pair first and then the blacklist write failed, the user
+        # would briefly hold two valid refresh tokens — extending
+        # session lifetime past intent (ISSUE-009).
+        try:
+            token.blacklist()
+        except TokenError as exc:
+            logger.error(
+                "Refresh-token blacklist failed during rotation; refusing to mint new pair.",
+                extra={"error": str(exc)},
+            )
+            return ErrorResponse(
+                message="Token rotation temporarily unavailable. Please retry.",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         new_token = RefreshToken.for_user(user)
-        token.blacklist()
         return SuccessResponse(
             data={
                 "access": str(new_token.access_token),
