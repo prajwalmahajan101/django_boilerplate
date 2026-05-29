@@ -81,6 +81,85 @@ When the time comes to actually run Prometheus:
 
 **No code changes required.** Every call site already shapes data correctly for the cardinality contract. That's the whole point of the prep phase.
 
+## Request ID propagation
+
+Every request gets a correlation ID — either honoured from the inbound
+`X-Request-ID` header (validated by `_REQUEST_ID_PATTERN` in
+`core/middleware/request_id.py:12`) or minted as a UUIDv4 — and that
+single ID threads through:
+
+- **`request.request_id`** — set by `RequestIDMiddleware` before the view runs.
+- **`core.context.request_id_ctx`** — `ContextVar` bound for the duration of
+  the request. The middleware captures the reset token and restores it on
+  exit so nested Celery dispatch (or any inner `set_request_context`) does
+  not bleed IDs across the request boundary.
+- **Every log record** — `core.utils.logging.RequestContextFilter` stamps
+  `record.request_id` from the ContextVar.
+- **Every `BaseCustomError`** — captured at `__init__` time
+  (`core.base.exception.BaseCustomError.__init__`) so the response envelope
+  echoes the same ID back to the client.
+- **The `X-Request-ID` response header** — set unconditionally on the
+  outbound response.
+
+Operators tracing an incident pull the ID once from the client's response
+and follow it through every log line, audit row, and error envelope without
+joining tables.
+
+## Recovery monitor
+
+`core/resilience/recovery.py` runs a background monitor that watches every
+resilience provider whose Valkey alias degraded at boot (or after a runtime
+cache failure). It polls each degraded backend on a fixed cadence and
+resets the cached client once Valkey comes back, without restarting the
+process.
+
+Operational signals:
+
+- `registered backend for recovery monitor` (INFO) — emitted at boot for
+  every resilience alias that opted into recovery polling.
+- `ValkeyRecoveryMonitor started` (INFO) — the background polling thread
+  launched.
+- Look for log records carrying `event=backend_register` and
+  `alias=<cache name>` to confirm a degraded provider is being watched.
+
+The monitor is the reason a transient Valkey hiccup does not require a
+deploy — leave it running.
+
+## Health probes
+
+Two endpoints, served by `core/views.py` and wired in `core/urls.py`:
+
+- **`GET /health/`** — liveness. Succeeds whenever the process is up; never
+  checks a downstream dependency. Use this for kubelet `livenessProbe`.
+- **`GET /readiness/`** — readiness. Consults each resilience provider's
+  `is_healthy()` (cache, throttle, breaker backends) plus the audit
+  pipeline. A `503` here means **degraded but serving** — the load
+  balancer should drain the pod, but in-flight requests still complete.
+
+The response envelope is the standard `SuccessResponse` / `ErrorResponse`
+shape: `{success, message, data, errors, request_id}`. Anonymous probes
+(load balancers, kubelet) get the masked body so the dependency topology
+is not leaked. Adding a new dependency to readiness is one entry in
+`core/lifecycle/healthcheck.py`; the standard `LifecycleCheck` interface
+returns `(name, ok, detail)`.
+
+## Quick "where do I look?"
+
+When a symptom lands, this table maps it to the first place to check.
+Pair with a fresh `request_id` from the client's response and most
+incidents resolve in one or two hops.
+
+| Symptom | First place to look |
+|---|---|
+| 401 / 403 spike | `RequestLoggingMiddleware` records + the api_log row (`auth_provider` field); confirm the auth provider that ran |
+| Upstream 5xx from us | Circuit breaker state — grep logs for `breaker_open` / `event=breaker_state`; check the `subsystem` label |
+| Rate-limit denials | `Retry-After` + `X-RateLimit-*` headers in the client's response; throttle scope counters in cache |
+| Slow request | `RequestLoggingMiddleware` `duration_ms` + the matching `log_duration` block in the hot path |
+| Missing log entry | Sanitizer caps — `core.utils.log_sanitization` truncates oversized payloads; check the `truncated=true` flag |
+| 502 with empty body | Outbound HTTP failure — look for `OutboundURLNotAllowedError` / `ExternalTimeoutError` / `APIError` and the http_client INFO line carrying `host` + `status_code` |
+| Decrypt failure on a field | `DecryptionError` traceback in error logs; usually the `FIELD_ENCRYPTION_KEY` rotated without a re-encrypt pass |
+| Valkey alias stuck degraded | `ValkeyRecoveryMonitor` records for that alias — if no `recovered` line shows up, the backend is genuinely down |
+
 ## Why this earned an Architecture score-lift
 
 The `core.metrics` shim is a genuine new boundary. Services emit *intent* (record this event); the shim decides the *destination* (log today, log + metric tomorrow). Same shape as the existing `core.exceptions` / `core.responses` boundaries — call sites don't change when the implementation does. Future-proofing that's actually executable (a Grafana JSON file you can import) is more durable than future-proofing that's just documentation.
