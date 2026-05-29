@@ -9,6 +9,7 @@ silently disables authentication.
 from __future__ import annotations
 
 import logging
+import threading
 
 from django.conf import settings
 
@@ -18,21 +19,25 @@ logger = logging.getLogger(__name__)
 
 _REGISTRY: dict[str, AuthProvider] = {}
 _WARNED_UNKNOWN: set[str] = set()
+_lock = threading.Lock()
 
 
 def register(provider: AuthProvider) -> None:
     """Register ``provider`` under its ``name``. Idempotent."""
-    _REGISTRY[provider.name] = provider
+    with _lock:
+        _REGISTRY[provider.name] = provider
 
 
 def unregister(name: str) -> None:
     """Drop ``name`` from the registry — primarily a test helper."""
-    _REGISTRY.pop(name, None)
+    with _lock:
+        _REGISTRY.pop(name, None)
 
 
 def registered_names() -> list[str]:
     """Return the names of every currently-registered provider."""
-    return list(_REGISTRY)
+    with _lock:
+        return list(_REGISTRY)
 
 
 def enabled_providers() -> list[AuthProvider]:
@@ -40,16 +45,20 @@ def enabled_providers() -> list[AuthProvider]:
     names = list(getattr(settings, "AUTH_ENABLED_PROVIDERS", ["api_key"]))
     out: list[AuthProvider] = []
     for name in names:
-        provider = _REGISTRY.get(name)
+        with _lock:
+            provider = _REGISTRY.get(name)
+            already_warned = name in _WARNED_UNKNOWN
+            registered_snapshot = sorted(_REGISTRY) if provider is None else None
+            if provider is None and not already_warned:
+                _WARNED_UNKNOWN.add(name)
         if provider is None:
-            if name not in _WARNED_UNKNOWN:
+            if not already_warned:
                 logger.warning(
                     "AUTH_ENABLED_PROVIDERS references unknown provider %r — "
                     "registered names: %s",
                     name,
-                    sorted(_REGISTRY),
+                    registered_snapshot,
                 )
-                _WARNED_UNKNOWN.add(name)
             continue
         out.append(provider)
     return out
@@ -57,8 +66,9 @@ def enabled_providers() -> list[AuthProvider]:
 
 def _reset() -> None:
     """Drop all registered providers + warnings. Test helper."""
-    _REGISTRY.clear()
-    _WARNED_UNKNOWN.clear()
+    with _lock:
+        _REGISTRY.clear()
+        _WARNED_UNKNOWN.clear()
 
 
 __all__ = [

@@ -9,11 +9,13 @@ discovers tasks through Celery's own autodiscover mechanism.
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Callable
 
 from celery import shared_task
 
 _registry: dict[str, Any] = {}
+_lock = threading.Lock()
 
 
 def register_task(
@@ -38,7 +40,8 @@ def register_task(
     def _decorate(func: Callable[..., Any]) -> Callable[..., Any]:
         task_name = name or f"{func.__module__}.{func.__qualname__}"
         task = shared_task(name=task_name, **task_kwargs)(func)
-        _registry[task_name] = task
+        with _lock:
+            _registry[task_name] = task
         return task
 
     if fn is not None:
@@ -48,12 +51,14 @@ def register_task(
 
 def registered_tasks() -> dict[str, Any]:
     """Return a copy of the registry — test-only introspection."""
-    return dict(_registry)
+    with _lock:
+        return dict(_registry)
 
 
 def _reset_registry() -> None:
     """Drop all registered tasks. Test helper."""
-    _registry.clear()
+    with _lock:
+        _registry.clear()
 
 
 __all__ = ["register_task", "registered_tasks"]
