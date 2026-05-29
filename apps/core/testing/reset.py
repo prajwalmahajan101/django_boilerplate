@@ -25,6 +25,16 @@ def reset_all_singletons() -> None:
     _reset_fire_and_forget_queues()
     _reset_fernet_cache()
     _reset_task_registry()
+    _reset_auth_registry_warnings()
+
+
+def _reset_auth_registry_warnings() -> None:
+    try:
+        from core.auth import registry as auth_registry
+
+        auth_registry._WARNED_UNKNOWN.clear()
+    except Exception:
+        logger.debug("auth registry warning reset skipped", exc_info=True)
 
 
 def _reset_django_caches() -> None:

@@ -195,6 +195,11 @@ SESSION_CACHE_ALIAS = "default"
 # --------------------------------------------------------------------------
 # Django REST Framework
 # --------------------------------------------------------------------------
+# Ordered list of registered auth provider names consulted by
+# core.auth.composite.CompositeAuthentication. Edit per-environment to
+# enable/disable providers without touching DRF settings.
+AUTH_ENABLED_PROVIDERS = ["jwt", "api_key"]
+
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_PAGINATION_CLASS": "core.utils.pagination.StandardPageNumberPagination",
@@ -209,8 +214,7 @@ REST_FRAMEWORK = {
     # removed to avoid CSRF conflicts for SPA clients that happen to
     # carry a Django session cookie (e.g. admin users hitting the API).
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
-        "accounts.authentication.APIKeyAuthentication",
+        "core.auth.composite.CompositeAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",

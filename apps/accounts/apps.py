@@ -39,3 +39,14 @@ class AccountsConfig(AppConfig):
         register_resource("accounts.role", Resource.ROLE)
         register_resource("accounts.permission", Resource.ROLE)
         register_resource("accounts.apikey", Resource.API_KEY)
+
+        from accounts.auth_providers import (
+            APIKeyProvider,
+            GoogleOAuthProvider,
+            JWTProvider,
+        )
+        from core.auth.registry import register
+
+        register(JWTProvider())
+        register(APIKeyProvider())
+        register(GoogleOAuthProvider())
