@@ -17,6 +17,9 @@
 # rename / delete things.
 
 patterns:
+  - pattern: 'co-lending-gateway|colend(er|ing)?|optimoloan'
+    replacement: 'Donor-project lineage from the co-lending-gateway extraction. Replace with project-agnostic values: `app` for cache prefixes and image names, `example.com` for example hosts / emails, and rephrase docstrings to drop the donor-project name. This boilerplate ships with no project-specific identifiers.'
+
   - pattern: 'encrypted_key'
     replacement: 'APIKey.encrypted_key was renamed to APIKey.secret in 0.2.0.'
 

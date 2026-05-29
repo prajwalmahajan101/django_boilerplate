@@ -9,13 +9,18 @@ not enough. So the responsibility now lives in a pre-commit hook
 that runs on every commit and refuses to let the rot land.
 
 Scope:
-- Scans only documentation surfaces: ``docs/``, top-level ``CLAUDE.md``,
-  ``README.md``, app-level ``apps/*/CLAUDE.md``, and ``CHANGELOG.md``.
-  Code is intentionally *not* scanned — refactors there are caught by
-  tests / type-checker; this hook only enforces doc hygiene.
+- Scans documentation surfaces (``docs/``, ``CLAUDE.md``, ``README.md``,
+  app-level ``CLAUDE.md`` files) **and** source files under ``apps/``,
+  ``config/``, ``scripts/`` (``*.py``). Tests caught the symbol-rename
+  cases; this hook also catches name lineage that escapes the test
+  surface — e.g. donor-project literals embedded in module docstrings,
+  cache key prefixes, settings strings, fixture email addresses.
 - Skips ``.code_review/`` (a living record of past state, allowed to
-  reference old names) and ``CHANGELOG.md`` *entries describing the
-  rename itself* — see the ``allow_changelog`` flag below.
+  reference old names) and ``CHANGELOG.md`` (rename entries must use
+  the old name to describe the change).
+- A line containing the marker ``# stale-refs: allow`` is skipped, so
+  a legitimate occurrence (deprecation shim, intentional historical
+  reference) can be carved out without dropping the whole file.
 
 Patterns + replacement hints live in ``scripts/stale_refs.yaml`` so a
 rename commit can append the old symbol in the same PR. The hook
@@ -49,14 +54,23 @@ except ImportError:
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / "scripts" / "stale_refs.yaml"
 
-# Documentation surfaces scanned. Globs are evaluated from REPO_ROOT.
+# Documentation + code surfaces scanned. Globs are evaluated from REPO_ROOT.
 INCLUDE_GLOBS = [
     "docs/**/*.md",
     "CLAUDE.md",
     "README.md",
     "apps/*/CLAUDE.md",
     "apps/*/*/CLAUDE.md",
+    "apps/**/*.py",
+    "config/**/*.py",
+    "scripts/**/*.py",
 ]
+
+# Per-line allow marker. If the line contains this substring the line is
+# skipped. Lets a single legitimate occurrence opt out without dropping
+# scope on the whole file (and without polluting the manifest with
+# file-level exclusions).
+ALLOW_MARKER = "# stale-refs: allow"
 
 # Always-ignored paths. ``.code_review/`` is a living history of prior
 # review state and is *expected* to mention old symbols. ``CHANGELOG.md``
@@ -65,6 +79,13 @@ INCLUDE_GLOBS = [
 EXCLUDE_PREFIXES = (
     ".code_review/",
     "CHANGELOG.md",
+)
+
+# Path substrings that mark a scanned file as historical-record (e.g.
+# Django migrations preserve the old field names by design — renaming
+# a field is itself encoded as a migration that mentions both names).
+EXCLUDE_SUBSTRINGS = (
+    "/migrations/",
 )
 
 
@@ -93,6 +114,8 @@ def discover_files() -> list[Path]:
             rel = path.relative_to(REPO_ROOT).as_posix()
             if any(rel.startswith(prefix) for prefix in EXCLUDE_PREFIXES):
                 continue
+            if any(sub in f"/{rel}" for sub in EXCLUDE_SUBSTRINGS):
+                continue
             files.add(path)
     return sorted(files)
 
@@ -114,6 +137,8 @@ def main() -> int:
 
         rel = path.relative_to(REPO_ROOT).as_posix()
         for lineno, line in enumerate(lines, start=1):
+            if ALLOW_MARKER in line:
+                continue
             for compiled, hint in patterns:
                 if compiled.search(line):
                     snippet = line.strip()[:120]

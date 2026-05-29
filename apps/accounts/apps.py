@@ -30,7 +30,7 @@ class AccountsConfig(AppConfig):
             APIKeyGenerationError, status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-        # RBAC: this used to be RBACBackend.MODEL_RESOURCE_MAP, a hardcoded
+        # RBAC: this used to be RBACBackend.MODEL_RESOURCE_MAP, a hardcoded  # stale-refs: allow
         # dict in apps/accounts/backends.py. Moving the registration here
         # means a new domain app drops in next to accounts/ and registers
         # its own resources from its own AppConfig.ready() — no edit to

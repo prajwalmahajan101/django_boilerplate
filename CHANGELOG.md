@@ -29,6 +29,18 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   bucket. Set `NUM_PROXIES=1` for nginx, `NUM_PROXIES=2` for
   ALB + nginx. (ISSUE-029)
 
+### Changed
+- `scripts/check_stale_refs.py` scope extended to `.py` files under
+  `apps/`, `config/`, `scripts/` (was Markdown / CLAUDE.md only).
+  Migrations are auto-excluded (intentionally carry historical
+  field names). New per-line opt-out marker
+  `# stale-refs: allow` lets a single legitimate occurrence
+  bypass without dropping scope on the whole file.
+- `scripts/stale_refs.yaml` seeded with the donor-project lineage
+  family pattern (`co-lending-gateway|colend(er|ing)?|optimoloan`)
+  so the next adopter's grep returns zero hits and future
+  similar leaks fail the commit. (ISSUE-034)
+
 ### Added
 - `docs/data-model.md` — reference for `BaseModel`, `NamedBaseModel`,
   `BaseService[T]`, the `Meta(BaseModel.Meta)` inheritance contract,

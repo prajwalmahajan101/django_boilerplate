@@ -1,10 +1,10 @@
 """Resource ↔ Model registry for RBAC.
 
 Domain apps populate this registry from their ``AppConfig.ready()`` so
-adding a new app no longer requires editing ``RBACBackend.MODEL_RESOURCE_MAP``
-in ``apps/accounts/backends.py``. The hard-coded dict that used to live
-there is now populated by ``accounts/apps.py`` via the same path every
-new app uses.
+adding a new app does not require editing the auth backend. Every app
+registers its own ``Resource`` mappings via ``register_resource()`` and
+the backend reads them through ``resource_for()``; new domain apps drop
+in next to ``accounts/`` without any cross-app source edit.
 
 Two read APIs:
 
