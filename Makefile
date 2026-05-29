@@ -39,6 +39,12 @@ help:  ## Show available targets
 audit-hot-path:  ## Profile capture_and_dispatch overhead (p50/p95/p99)
 	python scripts/profile_audit_path.py
 
+settings-schema:  ## Print the env-vars schema dumped from config/settings/base.py
+	python scripts/dump_settings_schema.py
+
+settings-schema-check:  ## Fail if docs/configuration.md drifts from base.py
+	python scripts/dump_settings_schema.py --check
+
 audit:  ## Run pip-audit against requirements/prod.txt (ephemeral container)
 	docker run --rm -v "$(CURDIR)/requirements:/reqs:ro" $(PYTHON_IMAGE) \
 		sh -c "$(AUDIT_SYSTEM_DEPS) && pip install --quiet pip-audit==$(PIP_AUDIT_VERSION) && pip-audit -r /reqs/prod.txt"
