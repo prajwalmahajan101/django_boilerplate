@@ -26,6 +26,7 @@ from django.db import models, transaction
 from django.db.models import QuerySet
 from django.utils import timezone
 
+from core.base.audit import apply_audit_fields
 from core.exceptions import EntityNotFoundError
 
 logger = logging.getLogger(__name__)
@@ -261,9 +262,7 @@ class BaseService(ABC, Generic[ModelType]):
         serializer was written).
         """
         data = self.pre_create(data, user)
-
-        if user and hasattr(self.model, "created_by"):
-            data.setdefault("created_by", user)
+        apply_audit_fields(data, user, on_create=True)
 
         instance = self.model(**data)
         instance.save()
@@ -322,8 +321,7 @@ class BaseService(ABC, Generic[ModelType]):
         for field, value in data.items():
             setattr(instance, field, value)
 
-        if user and hasattr(instance, "updated_by"):
-            instance.updated_by = user
+        apply_audit_fields(instance, user, on_create=False)
 
         instance.save()
 
