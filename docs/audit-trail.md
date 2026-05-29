@@ -118,6 +118,71 @@ The key invariants enforced by this design:
   correct state for system-created rows; downstream code must tolerate NULL
   on either audit field.
 
+## API audit log pipeline (`apps/core/api_log/`)
+
+The row-level audit fields above cover *what changed in our data*. The
+api_log pipeline covers *what crossed the process boundary* — every
+inbound HTTP request and every outbound HTTP call captured into a
+single queryable table, asynchronously, with no request-path latency.
+
+### Inbound / Outbound capture
+
+- **Inbound** — `@log_inbound("service_name")`
+  (`core/api_log/inbound.py`) stamps the request and its response into
+  the audit pipeline after the view returns. Captures method, path,
+  status, duration, the authenticated principal, the request and
+  response bodies (after sanitization), and the `request_id` for
+  correlation.
+- **Outbound** — `core.utils.http_client.make_http_request` emits a
+  matching audit entry for every outbound call via
+  `core/api_log/outbound.py`: URL host, method, status, duration, the
+  outbound payload, and the upstream response body. Failures (timeout,
+  SSRF refusal, non-2xx) go through
+  `core.exceptions.utils.normalize_outbound_exception` so the row has
+  a consistent `status_code` / `response_body` shape regardless of
+  which typed exception fired.
+- **Sanitization** — `core/api_log/sanitizers.py` strips known
+  credential headers (`Authorization`, `X-API-Key`, cookies), redacts
+  PII fields, and caps payload size. Anything that would violate the
+  bounded-cardinality contract from
+  [observability.md](observability.md#cardinality-contract) is
+  rejected before write.
+
+### Dispatch pipeline
+
+Writes go through the fire-and-forget queue documented in
+[ADR-0001](decisions/0001-fire-and-forget-dispatch.md):
+
+1. The decorator hands the row to `core.dispatch.fire_and_forget`.
+2. The dispatcher pushes it onto a bounded in-process queue.
+3. A background worker thread drains the queue into the configured
+   backend (DB row writer today).
+4. On overflow, the row is **dropped** with a `WARNING` log
+   (`event=fire_and_forget_overflow`) so operators see saturation
+   loudly. Dropping is preferable to slowing the request path.
+5. On process shutdown, `core.lifecycle` triggers a bounded
+   drain — pending rows get up to the configured deadline to flush
+   before the worker exits.
+
+### Backends
+
+Pluggable via the `ApiLogBackend` `typing.Protocol` in
+`core/api_log/backends/base.py`. The default `OrmApiLogBackend`
+(`backends/orm.py`) writes to the `ApiLog` model; `NoopApiLogBackend`
+(`backends/noop.py`) is the test seam. Adding a new sink (CloudWatch,
+Kinesis, BigQuery) is one new class implementing the protocol plus a
+registry binding — no decorator changes required.
+
+### Querying
+
+`ApiLog.objects` honours the standard Django ORM. For incident triage
+the most useful filter is `request_id` — every row that participated
+in a single client request shares it (inbound + every outbound called
+during the request). Pair with the
+[observability.md triage table](observability.md#quick-where-do-i-look)
+to turn a `request_id` from a 5xx response into a complete timeline in
+under a minute.
+
 ## Related docs
 
 - [../apps/core/CLAUDE.md](../apps/core/CLAUDE.md) — BaseModel / BaseService
@@ -125,3 +190,6 @@ The key invariants enforced by this design:
 - [architecture.md](architecture.md) — where the service layer sits.
 - [exceptions.md](exceptions.md) — error-handling boundaries around service
   methods.
+- [decisions/0001-fire-and-forget-dispatch.md](decisions/0001-fire-and-forget-dispatch.md) — why the api_log queue drops on overflow.
+- [observability.md](observability.md) — metrics contract + the triage
+  table the `request_id` cross-link references.
