@@ -21,7 +21,7 @@ jobs:
         env:
           POSTGRES_DB: test_app
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
         ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U postgres"
@@ -34,12 +34,10 @@ jobs:
       DJANGO_SETTINGS_MODULE: config.settings.test
       POSTGRES_DB: test_app
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_PORT: "5432"
-      # Throwaway value: no service uses this key, and it's only valid for the
-      # test settings module. Quote to keep GitGuardian's password detector quiet.
-      SECRET_KEY: "test-only-no-secret-here"
+      SECRET_KEY: ${{ secrets.TEST_DJANGO_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v4
