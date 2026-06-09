@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 
 from django.apps import AppConfig
 
@@ -27,21 +28,17 @@ class CoreConfig(AppConfig):
         """
         from core.resilience.registry import registry
 
-        try:
+        with contextlib.suppress(ValueError):
             registry.register_service(
                 "s3",
                 {
                     "circuit_breaker": {
                         "fail_max": 5,
                         "reset_timeout": 30,
-                        "excluded_exceptions": (
-                            "core.exceptions.infrastructure.S3NotFoundError",
-                        ),
+                        "excluded_exceptions": ("core.exceptions.infrastructure.S3NotFoundError",),
                     },
                 },
             )
-        except ValueError:
-            pass
 
     def _start_recovery_monitor(self) -> None:
         """Single recovery monitor thread per process.
@@ -54,7 +51,7 @@ class CoreConfig(AppConfig):
 
             monitor.start()
             atexit.register(monitor.stop)
-        except Exception:  # noqa: BLE001 — never fail app boot
+        except Exception:
             import logging
 
             logging.getLogger(__name__).exception(

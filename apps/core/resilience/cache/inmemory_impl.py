@@ -9,9 +9,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from django.core.cache.backends.locmem import LocMemCache
-
 from core.resilience.cache.base import BaseCacheBackend
+from django.core.cache.backends.locmem import LocMemCache
 
 logger = logging.getLogger(__name__)
 

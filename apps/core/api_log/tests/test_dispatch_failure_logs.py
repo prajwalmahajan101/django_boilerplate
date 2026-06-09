@@ -11,12 +11,11 @@ from __future__ import annotations
 import logging
 
 import pytest
-from django.test import override_settings
-
 from core.api_log import dispatch as dispatch_mod
 from core.api_log import factory
 from core.api_log.models import Direction
 from core.utils.logging import _request_id_var
+from django.test import override_settings
 
 
 def _trivial_row(*_args, **_kwargs) -> dict:

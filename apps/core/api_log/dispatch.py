@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from core.api_log import factory
 from core.utils.logging import _request_id_var
@@ -62,9 +63,7 @@ def fire_and_forget(
     except Exception:
         logger.exception(
             "api_log dispatch failed; row dropped",
-            extra=_correlation_extra(
-                service_name=service_name, direction=direction, log_id=log_id
-            ),
+            extra=_correlation_extra(service_name=service_name, direction=direction, log_id=log_id),
         )
 
 
@@ -137,9 +136,7 @@ def capture_and_dispatch(
     except Exception:
         logger.exception(
             "api_log build_row failed (success path)",
-            extra=_correlation_extra(
-                service_name=service_name, direction=direction, log_id=log_id
-            ),
+            extra=_correlation_extra(service_name=service_name, direction=direction, log_id=log_id),
         )
     return result
 

@@ -44,9 +44,7 @@ if not env:
 
 _VALID_ENVS = ("local", "dev", "uat", "prod", "test")
 if env not in _VALID_ENVS:
-    raise ValueError(
-        f"Invalid DJANGO_ENV='{env}'. Expected one of: {', '.join(_VALID_ENVS)}"
-    )
+    raise ValueError(f"Invalid DJANGO_ENV='{env}'. Expected one of: {', '.join(_VALID_ENVS)}")
 
 
 def _load_secrets_from_aws(secret_name, region_name="ap-south-1"):

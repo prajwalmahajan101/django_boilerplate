@@ -40,7 +40,7 @@ class JsonEditorWidget(Textarea):
 
     def render(self, name, value, attrs=None, renderer=None):
         # Pretty-print JSON for readability
-        if value and isinstance(value, (dict, list)):
+        if value and isinstance(value, dict | list):
             value = json.dumps(value, indent=2, ensure_ascii=False)
         elif value and isinstance(value, str):
             try:
@@ -52,29 +52,29 @@ class JsonEditorWidget(Textarea):
         widget_id = attrs.get("id", f"id_{name}") if attrs else f"id_{name}"
 
         # Build textarea attrs with styling
-        final_attrs = self.build_attrs(attrs or {}, {
-            "name": name,
-            "id": widget_id,
-            "class": (
-                "vLargeTextField border border-base-200 bg-white font-medium "
-                "rounded-default shadow-xs text-font-default-light text-sm "
-                "focus:outline-2 focus:-outline-offset-2 focus:outline-primary-600 "
-                "dark:bg-base-900 dark:border-base-700 dark:text-font-default-dark "
-                "dark:scheme-dark px-3 py-2.5 w-full max-w-4xl "
-                "font-mono leading-relaxed resize-y tab-size-2"
-            ),
-            "style": (
-                "font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, "
-                "Consolas, 'Liberation Mono', monospace; "
-                "tab-size: 2; white-space: pre;"
-            ),
-        })
+        final_attrs = self.build_attrs(
+            attrs or {},
+            {
+                "name": name,
+                "id": widget_id,
+                "class": (
+                    "vLargeTextField border border-base-200 bg-white font-medium "
+                    "rounded-default shadow-xs text-font-default-light text-sm "
+                    "focus:outline-2 focus:-outline-offset-2 focus:outline-primary-600 "
+                    "dark:bg-base-900 dark:border-base-700 dark:text-font-default-dark "
+                    "dark:scheme-dark px-3 py-2.5 w-full max-w-4xl "
+                    "font-mono leading-relaxed resize-y tab-size-2"
+                ),
+                "style": (
+                    "font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, "
+                    "Consolas, 'Liberation Mono', monospace; "
+                    "tab-size: 2; white-space: pre;"
+                ),
+            },
+        )
 
         # Build attrs string
-        attrs_str = " ".join(
-            f'{k}="{v}"' for k, v in final_attrs.items()
-            if v is not None
-        )
+        attrs_str = " ".join(f'{k}="{v}"' for k, v in final_attrs.items() if v is not None)
         escaped_value = escape(value or "")
         escaped_id = escape(widget_id)
         escaped_id_js = escapejs(widget_id)

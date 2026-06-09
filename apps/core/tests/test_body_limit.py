@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import json
 
+from core.middleware.body_limit import ContentLengthLimitMiddleware
 from django.core.exceptions import RequestDataTooBig
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, override_settings
-
-from core.middleware.body_limit import ContentLengthLimitMiddleware
 
 
 def _ok(_request):
@@ -26,14 +25,18 @@ class ContentLengthLimitMiddlewareTests(SimpleTestCase):
     @override_settings(MAX_REQUEST_BODY_BYTES=100)
     def test_short_body_passes_through(self) -> None:
         mw = ContentLengthLimitMiddleware(_ok)
-        request = self.factory.post("/api/v1/items/", data=b"x" * 50, content_type="application/octet-stream")
+        request = self.factory.post(
+            "/api/v1/items/", data=b"x" * 50, content_type="application/octet-stream"
+        )
         response = mw(request)
         self.assertEqual(response.status_code, 200)
 
     @override_settings(MAX_REQUEST_BODY_BYTES=100)
     def test_oversize_declared_length_is_413(self) -> None:
         mw = ContentLengthLimitMiddleware(_ok)
-        request = self.factory.post("/api/v1/items/", data=b"x" * 200, content_type="application/octet-stream")
+        request = self.factory.post(
+            "/api/v1/items/", data=b"x" * 200, content_type="application/octet-stream"
+        )
         response = mw(request)
         self.assertEqual(response.status_code, 413)
         payload = json.loads(response.content)
@@ -44,7 +47,9 @@ class ContentLengthLimitMiddlewareTests(SimpleTestCase):
     @override_settings(MAX_REQUEST_BODY_BYTES=0)
     def test_zero_disables_declared_check(self) -> None:
         mw = ContentLengthLimitMiddleware(_ok)
-        request = self.factory.post("/api/v1/items/", data=b"x" * 200, content_type="application/octet-stream")
+        request = self.factory.post(
+            "/api/v1/items/", data=b"x" * 200, content_type="application/octet-stream"
+        )
         response = mw(request)
         self.assertEqual(response.status_code, 200)
 

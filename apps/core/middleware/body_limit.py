@@ -26,13 +26,12 @@ required.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
+from core.utils.logging import _request_id_var
 from django.conf import settings
 from django.core.exceptions import RequestDataTooBig
 from django.http import HttpRequest, HttpResponse, JsonResponse
-
-from core.utils.logging import _request_id_var
 
 _DEFAULT_MAX_BYTES = 2 * 1024 * 1024
 
@@ -51,9 +50,7 @@ def _envelope(max_bytes: int) -> JsonResponse:
         "errors": [
             {
                 "code": "REQUEST_BODY_TOO_LARGE",
-                "message": (
-                    f"Request body exceeds the configured maximum of {max_bytes} bytes."
-                ),
+                "message": (f"Request body exceeds the configured maximum of {max_bytes} bytes."),
                 "field": None,
                 "details": {"max_bytes": max_bytes},
             }
@@ -68,9 +65,7 @@ class ContentLengthLimitMiddleware:
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
-        self.max_bytes = int(
-            getattr(settings, "MAX_REQUEST_BODY_BYTES", _DEFAULT_MAX_BYTES)
-        )
+        self.max_bytes = int(getattr(settings, "MAX_REQUEST_BODY_BYTES", _DEFAULT_MAX_BYTES))
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         if self.max_bytes > 0:
@@ -79,9 +74,7 @@ class ContentLengthLimitMiddleware:
                 return _envelope(self.max_bytes)
         return self.get_response(request)
 
-    def process_exception(
-        self, request: HttpRequest, exception: Exception
-    ) -> HttpResponse | None:
+    def process_exception(self, request: HttpRequest, exception: Exception) -> HttpResponse | None:
         """Convert Django's lazy streaming-cap exception to the envelope."""
         if isinstance(exception, RequestDataTooBig):
             return _envelope(self.max_bytes)

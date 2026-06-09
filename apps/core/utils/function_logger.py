@@ -55,7 +55,7 @@ def _summarize(obj: Any, max_length: int = 200) -> str:
             return f"<list with {len(obj)} items>"
         if isinstance(obj, tuple):
             return f"<tuple with {len(obj)} items>" if obj else "<tuple>"
-        if isinstance(obj, (str, int, float, bool)) or obj is None:
+        if isinstance(obj, str | int | float | bool) or obj is None:
             text = str(obj)
             return text[:max_length] + "..." if len(text) > max_length else text
         return f"<{type(obj).__name__}>"

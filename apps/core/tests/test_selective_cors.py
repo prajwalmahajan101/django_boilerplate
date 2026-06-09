@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from core.middleware.selective_cors import SelectiveCORSMiddleware
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, override_settings
-
-from core.middleware.selective_cors import SelectiveCORSMiddleware
 
 
 def _ok(_request):
@@ -23,9 +22,7 @@ class SelectiveCORSTests(SimpleTestCase):
     )
     def test_excluded_prefix_skips_cors_headers(self) -> None:
         mw = SelectiveCORSMiddleware(_ok)
-        request = self.factory.get(
-            "/webhooks/stripe/", HTTP_ORIGIN="https://example.com"
-        )
+        request = self.factory.get("/webhooks/stripe/", HTTP_ORIGIN="https://example.com")
         response = mw(request)
         # CorsMiddleware would have added the header; we bypassed it.
         self.assertNotIn("Access-Control-Allow-Origin", response.headers)
@@ -38,9 +35,7 @@ class SelectiveCORSTests(SimpleTestCase):
     )
     def test_non_excluded_path_delegates_to_corsmiddleware(self) -> None:
         mw = SelectiveCORSMiddleware(_ok)
-        request = self.factory.get(
-            "/api/v1/items/", HTTP_ORIGIN="https://example.com"
-        )
+        request = self.factory.get("/api/v1/items/", HTTP_ORIGIN="https://example.com")
         response = mw(request)
         self.assertIn("Access-Control-Allow-Origin", response.headers)
 

@@ -16,7 +16,7 @@ in ``MIDDLEWARE``. Configure prefixes via the
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from corsheaders.middleware import CorsMiddleware
 from django.conf import settings

@@ -1,13 +1,10 @@
 """Tests for API key authentication."""
 
-from unittest.mock import patch
-
+from accounts.authentication import APIKeyAuthentication
+from accounts.models import APIKey, User
 from django.core.cache import caches
 from django.test import RequestFactory, TestCase
 from rest_framework.exceptions import AuthenticationFailed
-
-from accounts.authentication import APIKeyAuthentication
-from accounts.models import APIKey, User
 
 
 class APIKeyModelTest(TestCase):
@@ -19,7 +16,8 @@ class APIKeyModelTest(TestCase):
             password="testpass123",
         )
         self.api_key, self.raw_key = APIKey.create_key(
-            user=self.user, name="Test Key",
+            user=self.user,
+            name="Test Key",
         )
 
     def test_create_key_returns_instance_and_raw_key(self):
@@ -36,7 +34,9 @@ class APIKeyModelTest(TestCase):
 
     def test_create_key_sets_updated_by(self):
         api_key, _ = APIKey.create_key(
-            user=self.user, name="Audit Key", created_by=self.user,
+            user=self.user,
+            name="Audit Key",
+            created_by=self.user,
         )
         self.assertEqual(api_key.updated_by, self.user)
 
@@ -69,7 +69,8 @@ class APIKeyAuthenticationTest(TestCase):
             password="testpass123",
         )
         self.api_key, self.raw_key = APIKey.create_key(
-            user=self.user, name="Test Key",
+            user=self.user,
+            name="Test Key",
         )
 
     def test_no_header_returns_none(self):
@@ -91,7 +92,8 @@ class APIKeyAuthenticationTest(TestCase):
     def test_bogus_key_raises(self):
         """A completely bogus key with no matching prefix."""
         request = self.rf.get(
-            "/", HTTP_X_API_KEY="bogus_key_that_doesnt_exist_at_all",
+            "/",
+            HTTP_X_API_KEY="bogus_key_that_doesnt_exist_at_all",
         )
         with self.assertRaises(AuthenticationFailed):
             self.auth.authenticate(request)

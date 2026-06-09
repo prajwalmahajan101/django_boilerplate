@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import json
-
-from django.test import SimpleTestCase, override_settings
+from datetime import UTC
 
 from core.api_log.sanitizers import (
     audit_safe,
@@ -13,6 +12,7 @@ from core.api_log.sanitizers import (
     serialize_body,
     truncate,
 )
+from django.test import SimpleTestCase, override_settings
 
 
 class RedactHeadersTests(SimpleTestCase):
@@ -71,9 +71,7 @@ class SerializeBodyTests(SimpleTestCase):
         self.assertEqual(serialize_body(b"hello"), "hello")
 
     def test_dict_redacts_sensitive_keys(self) -> None:
-        out = serialize_body(
-            {"username": "alice", "password": "p@ss", "api_key": "sk_live_x"}
-        )
+        out = serialize_body({"username": "alice", "password": "p@ss", "api_key": "sk_live_x"})
         assert out is not None
         self.assertNotIn("p@ss", out)
         self.assertNotIn("sk_live_x", out)
@@ -106,8 +104,8 @@ class ComputeTtlTests(SimpleTestCase):
         ts = compute_ttl()
         assert ts is not None
         # Roughly 7 days from now (within a wide tolerance).
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        delta = ts - int(datetime.now(timezone.utc).timestamp())
+        delta = ts - int(datetime.now(UTC).timestamp())
         self.assertGreater(delta, 6 * 86_400)
         self.assertLess(delta, 8 * 86_400)

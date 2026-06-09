@@ -9,7 +9,6 @@ or columns that leak ordering. The default ``None`` stays permissive
 from __future__ import annotations
 
 import pytest
-
 from accounts.models import APIKey
 from core.base.service import BaseService
 

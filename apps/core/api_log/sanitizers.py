@@ -17,13 +17,12 @@ from __future__ import annotations
 
 import functools
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from core.utils.log_sanitization import sanitize_for_log
 from django.conf import settings
 from django.test.signals import setting_changed
-
-from core.utils.log_sanitization import sanitize_for_log
 
 UNSET: Any = object()
 
@@ -43,7 +42,7 @@ def _sensitive_headers() -> frozenset[str]:
     return frozenset(h.lower() for h in raw)
 
 
-def _bust_sensitive_headers_cache(sender, setting, **kwargs):  # noqa: ANN001
+def _bust_sensitive_headers_cache(sender, setting, **kwargs):
     if setting == "API_LOG_SENSITIVE_HEADERS":
         _sensitive_headers.cache_clear()
 
@@ -54,9 +53,7 @@ setting_changed.connect(_bust_sensitive_headers_cache)
 def redact_headers(headers: dict[str, str]) -> dict[str, str]:
     """Return a copy of ``headers`` with sensitive values replaced."""
     sensitive = _sensitive_headers()
-    return {
-        k: ("[REDACTED]" if k.lower() in sensitive else v) for k, v in headers.items()
-    }
+    return {k: ("[REDACTED]" if k.lower() in sensitive else v) for k, v in headers.items()}
 
 
 def truncate(text: str | None, max_len: int) -> str | None:
@@ -75,7 +72,7 @@ def audit_safe(value: Any) -> Any:
     swallow, silently dropping the row. Convert bytes to a size
     summary; everything else passes through.
     """
-    if isinstance(value, (bytes, bytearray)):
+    if isinstance(value, bytes | bytearray):
         return {"__bytes__": True, "size_bytes": len(value)}
     return value
 
@@ -94,15 +91,15 @@ def summarise_body_for_audit(value: Any) -> Any:
     if value is None:
         return None
     try:
-        from django.http import QueryDict
         from django.core.files.uploadedfile import UploadedFile
+        from django.http import QueryDict
     except Exception:
         QueryDict = None  # type: ignore[assignment]
         UploadedFile = None  # type: ignore[assignment]
 
     if QueryDict is not None and isinstance(value, QueryDict):
         fields: list[dict[str, Any]] = []
-        for key in value.keys():
+        for key in value:
             for item in value.getlist(key):
                 entry: dict[str, Any] = {"name": key}
                 if UploadedFile is not None and isinstance(item, UploadedFile):
@@ -110,7 +107,7 @@ def summarise_body_for_audit(value: Any) -> Any:
                     if item.content_type:
                         entry["content_type"] = item.content_type
                     entry["size_bytes"] = item.size
-                elif isinstance(item, (bytes, bytearray)):
+                elif isinstance(item, bytes | bytearray):
                     entry["size_bytes"] = len(item)
                 elif isinstance(item, str):
                     entry["value"] = item if len(item) <= 200 else item[:200] + "…"
@@ -179,7 +176,7 @@ def serialize_body(value: Any, max_len: int | None = None) -> str | None:
         max_len = int(getattr(settings, "API_LOG_MAX_BODY_LEN", 4096))
     try:
         structured: Any
-        if isinstance(value, (bytes, bytearray)):
+        if isinstance(value, bytes | bytearray):
             decoded = bytes(value).decode("utf-8", errors="replace")
             structured = _try_parse_json(decoded, fallback=decoded)
         elif isinstance(value, str):
@@ -188,10 +185,7 @@ def serialize_body(value: Any, max_len: int | None = None) -> str | None:
             structured = value
 
         redacted = sanitize_for_log(structured, max_string_length=max_len)
-        if isinstance(redacted, str):
-            text = redacted
-        else:
-            text = json.dumps(redacted, default=str)
+        text = redacted if isinstance(redacted, str) else json.dumps(redacted, default=str)
         return truncate(text, max_len)
     except Exception:
         return None
@@ -203,7 +197,7 @@ def _try_parse_json(text: str, fallback: Any) -> Any:
         parsed = json.loads(text)
     except (ValueError, TypeError):
         return fallback
-    if isinstance(parsed, (dict, list)):
+    if isinstance(parsed, dict | list):
         return parsed
     return fallback
 
@@ -213,7 +207,7 @@ def compute_ttl() -> int | None:
     days = int(getattr(settings, "API_LOG_TTL_DAYS", 0) or 0)
     if days <= 0:
         return None
-    return int((datetime.now(timezone.utc) + timedelta(days=days)).timestamp())
+    return int((datetime.now(UTC) + timedelta(days=days)).timestamp())
 
 
 __all__ = [

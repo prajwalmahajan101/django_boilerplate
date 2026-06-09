@@ -1,6 +1,6 @@
 """Middleware to add rate limit headers to responses."""
 
-from typing import Callable
+from collections.abc import Callable
 
 from django.http import HttpRequest, HttpResponse
 

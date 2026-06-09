@@ -4,19 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
-from allauth.socialaccount.providers.oauth2.client import OAuth2Client
-from dj_rest_auth.registration.views import SocialLoginView
-from drf_spectacular.utils import extend_schema
-from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.request import Request
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework_simplejwt.exceptions import TokenError
-from rest_framework_simplejwt.tokens import RefreshToken
-
 from accounts.api_schemas import (
     api_key_delete_schema,
     api_key_revoke_schema,
@@ -29,11 +16,23 @@ from accounts.api_schemas import (
 from accounts.repositories import UserRepository
 from accounts.serializers import GoogleCallbackSerializer, UserProfileSerializer
 from accounts.services import APIKeyService, UserService
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from core.enums import Action, Resource
 from core.middleware.throttling import AuthEndpointThrottle
 from core.permissions import HasResourcePermission
 from core.resilience.throttles import BurstThrottle, GlobalThrottle, ValkeyRateThrottle
 from core.responses import ErrorResponse, SuccessResponse
+from dj_rest_auth.registration.views import SocialLoginView
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 

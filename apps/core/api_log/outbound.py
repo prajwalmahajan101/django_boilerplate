@@ -19,7 +19,8 @@ Usage::
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from core.api_log.dispatch import capture_and_dispatch
 from core.api_log.error_messages import build_error_message

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from django.test import TestCase
-
 from core.testing import reset_all_singletons
+from django.test import TestCase
 
 
 class ResetAllSingletonsTests(TestCase):

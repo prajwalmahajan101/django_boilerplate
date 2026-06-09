@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import time
 
-from django.test import SimpleTestCase, override_settings
-
 from core.api_log import factory
 from core.api_log.dispatch import capture_and_dispatch
 from core.api_log.models import Direction
+from django.test import SimpleTestCase, override_settings
 
 
 def _drain_queue() -> None:
@@ -72,9 +71,7 @@ class CaptureAndDispatchTests(SimpleTestCase):
                 "request_body": None,
                 "response_headers": {},
                 "response_body": None,
-                "error": {"type": type(exc).__name__, "message": str(exc)}
-                if exc
-                else None,
+                "error": {"type": type(exc).__name__, "message": str(exc)} if exc else None,
                 "extra": {},
             }
 

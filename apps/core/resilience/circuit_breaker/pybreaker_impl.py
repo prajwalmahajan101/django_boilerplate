@@ -9,12 +9,12 @@ each worker maintains independent breaker state.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from threading import RLock
 from typing import Any
 
 import pybreaker
-
 from core.resilience.circuit_breaker.base import (
     BaseCircuitBreaker,
     BaseCircuitBreakerRegistry,
@@ -72,10 +72,8 @@ class PyBreakerCircuitBreaker(BaseCircuitBreaker):
         if state == "half-open":
             # In half-open, a success should drive toward closing.
             # Use .call() with a no-op — this is the one correct case.
-            try:
+            with contextlib.suppress(pybreaker.CircuitBreakerError):
                 self._breaker.call(lambda: None)
-            except pybreaker.CircuitBreakerError:
-                pass
             if self._breaker.current_state == "closed":
                 self._opened_at = 0.0
             return

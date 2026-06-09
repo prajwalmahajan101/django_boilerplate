@@ -13,15 +13,14 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from rest_framework.throttling import SimpleRateThrottle
-
-from django.conf import settings as django_settings
 from core.resilience.cache.provider import get_cache
 from core.resilience.throttles.base import (
     get_user_or_ip_ident,
     get_user_tier,
     log_throttle_event,
 )
+from django.conf import settings as django_settings
+from rest_framework.throttling import SimpleRateThrottle
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -96,7 +95,8 @@ class DRFBaseThrottle(SimpleRateThrottle):
 
             if not result:
                 log_throttle_event(
-                    request, view,
+                    request,
+                    view,
                     scope=getattr(self, "scope", "unknown"),
                     rate=self.rate,
                     history_length=len(self.history) if hasattr(self, "history") else 0,

@@ -9,9 +9,10 @@ per-class fall-through semantics.
 
 from __future__ import annotations
 
-from rest_framework.authentication import BaseAuthentication
+import contextlib
 
 from core.auth.registry import enabled_providers
+from rest_framework.authentication import BaseAuthentication
 
 
 class CompositeAuthentication(BaseAuthentication):
@@ -47,8 +48,6 @@ class CompositeAuthentication(BaseAuthentication):
         cached = getattr(request, "_composite_auth_providers", None)
         if cached is None:
             cached = enabled_providers()
-            try:
+            with contextlib.suppress(AttributeError):
                 request._composite_auth_providers = cached
-            except AttributeError:
-                pass
         return cached

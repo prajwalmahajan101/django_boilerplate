@@ -13,6 +13,7 @@ test plumbing keeps the same vocabulary.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,10 +43,8 @@ def _reset_django_caches() -> None:
         from django.core.cache import caches
 
         for cache in caches.all():
-            try:
+            with contextlib.suppress(Exception):
                 cache.clear()
-            except Exception:
-                pass
     except Exception:
         logger.debug("django caches reset skipped", exc_info=True)
 

@@ -5,10 +5,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from core.base.response import BaseResponse
 from django.core.paginator import Page
 from rest_framework import status
-
-from core.base.response import BaseResponse
 
 
 class PaginatedResponse[T](BaseResponse):

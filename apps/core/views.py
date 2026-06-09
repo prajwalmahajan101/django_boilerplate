@@ -4,14 +4,6 @@ import ipaddress
 import logging
 from typing import Any
 
-from django.conf import settings
-from django.http import HttpResponse
-from django.views.decorators.cache import never_cache
-from rest_framework.decorators import api_view, permission_classes, throttle_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.request import Request
-from rest_framework.response import Response
-
 from core.api_schemas import health_schema, readiness_schema
 from core.lifecycle.healthcheck import (
     HealthCheckResult,
@@ -21,14 +13,19 @@ from core.lifecycle.healthcheck import (
     run_checks,
 )
 from core.resilience.throttles import BurstThrottle
+from django.conf import settings
+from django.http import HttpResponse
+from django.views.decorators.cache import never_cache
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.request import Request
+from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
 
 
 def _is_privileged(request: Request) -> bool:
-    return hasattr(request, "user") and getattr(
-        request.user, "has_superuser_role", False
-    )
+    return hasattr(request, "user") and getattr(request.user, "has_superuser_role", False)
 
 
 def _short(result: HealthCheckResult) -> str:
@@ -163,7 +160,7 @@ def metrics_endpoint(request: Request) -> HttpResponse:
     # prometheus_client and stream `generate_latest()`. Today the
     # combination (flag on, library absent) is an explicit misconfig.
     try:
-        from prometheus_client import (  # type: ignore[import-not-found]  # noqa: PLC0415
+        from prometheus_client import (  # type: ignore[import-not-found]
             CONTENT_TYPE_LATEST,
             generate_latest,
         )

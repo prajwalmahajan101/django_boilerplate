@@ -1,7 +1,5 @@
 """URL configuration for auth endpoints."""
 
-from django.urls import path
-
 from accounts.views import (
     APIKeyDeleteView,
     APIKeyRevokeView,
@@ -10,6 +8,7 @@ from accounts.views import (
     me,
     token_refresh,
 )
+from django.urls import path
 
 app_name = "accounts"
 

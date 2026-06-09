@@ -14,7 +14,7 @@ cardinality. See ``docs/observability.md``.
 from __future__ import annotations
 
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from django.http import HttpRequest, HttpResponse
 
@@ -30,7 +30,7 @@ class MetricsMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        from core.metrics import record_duration  # noqa: PLC0415
+        from core.metrics import record_duration
 
         start = time.perf_counter()
         response = self.get_response(request)

@@ -64,8 +64,17 @@ _MUTABLE_CALL_NAMES = {"dict", "set", "list"}
 _LOCK_CALL_LEAVES = {"Lock", "RLock", "local"}
 _WAIVER_TAG = "thread-safety:"
 _MUTATING_METHODS = {
-    "append", "extend", "insert", "remove", "pop", "clear",
-    "add", "discard", "update", "setdefault", "popitem",
+    "append",
+    "extend",
+    "insert",
+    "remove",
+    "pop",
+    "clear",
+    "add",
+    "discard",
+    "update",
+    "setdefault",
+    "popitem",
 }
 
 
@@ -94,15 +103,13 @@ def _is_lock_call(value: ast.AST) -> bool:
     func = value.func
     if isinstance(func, ast.Attribute) and func.attr in _LOCK_CALL_LEAVES:
         return True
-    if isinstance(func, ast.Name) and func.id in _LOCK_CALL_LEAVES:
-        return True
-    return False
+    return bool(isinstance(func, ast.Name) and func.id in _LOCK_CALL_LEAVES)
 
 
 def _module_has_lock(tree: ast.Module) -> bool:
     """Return True when *tree* declares a module-level lock primitive."""
     for node in tree.body:
-        if isinstance(node, (ast.Assign, ast.AnnAssign)):
+        if isinstance(node, ast.Assign | ast.AnnAssign):
             value = node.value if isinstance(node, ast.Assign) else node.value
             if value is not None and _is_lock_call(value):
                 return True

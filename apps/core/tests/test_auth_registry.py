@@ -6,8 +6,6 @@ import logging
 from unittest.mock import MagicMock
 
 import pytest
-from django.test import override_settings
-
 from core.auth import (
     CompositeAuthentication,
     enabled_providers,
@@ -16,6 +14,7 @@ from core.auth import (
     unregister,
 )
 from core.auth import registry as registry_module
+from django.test import override_settings
 
 
 @pytest.fixture

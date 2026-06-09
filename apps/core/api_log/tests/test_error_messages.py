@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from django.test import SimpleTestCase
-
 from core.api_log.error_messages import build_error_message
 from core.exceptions.infrastructure import ServiceUnavailableError
+from django.test import SimpleTestCase
 
 
 class BuildErrorMessageTests(SimpleTestCase):

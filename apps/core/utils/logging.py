@@ -176,6 +176,6 @@ def _record_metric_safe(
     bounded = {
         k: v
         for k, v in extras.items()
-        if k in _BOUNDED_LABEL_KEYS and isinstance(v, (str, int, float))
+        if k in _BOUNDED_LABEL_KEYS and isinstance(v, str | int | float)
     }
     record_duration(event, duration_ms, status=status, **bounded)

@@ -23,7 +23,7 @@ middleware uses ``setdefault`` so any header already stamped by Django's
 from __future__ import annotations
 
 import os
-from typing import Callable
+from collections.abc import Callable
 
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse
@@ -34,9 +34,7 @@ _BASE_HEADERS: dict[str, str] = {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": (
-        "camera=(), microphone=(), geolocation=(), interest-cohort=()"
-    ),
+    "Permissions-Policy": ("camera=(), microphone=(), geolocation=(), interest-cohort=()"),
     "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
 }
 

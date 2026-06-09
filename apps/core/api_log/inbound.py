@@ -17,7 +17,8 @@ Usage::
 from __future__ import annotations
 
 import functools
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from core.api_log.dispatch import capture_and_dispatch
 from core.api_log.error_messages import build_error_message
@@ -77,9 +78,7 @@ def log_inbound(service_name: str) -> Callable[[Callable[..., Any]], Callable[..
 
                 request_body: str | None = None
                 if request is not None:
-                    content_type = (
-                        getattr(request, "content_type", "") or ""
-                    ).lower()
+                    content_type = (getattr(request, "content_type", "") or "").lower()
                     if content_type.startswith("multipart/form-data"):
                         try:
                             from django.http import QueryDict
@@ -88,9 +87,7 @@ def log_inbound(service_name: str) -> Callable[[Callable[..., Any]], Callable[..
                             merged.update(getattr(request, "POST", {}) or {})
                             for k, v in (getattr(request, "FILES", {}) or {}).items():
                                 merged.appendlist(k, v)
-                            request_body = serialize_body(
-                                summarise_body_for_audit(merged)
-                            )
+                            request_body = serialize_body(summarise_body_for_audit(merged))
                         except Exception:
                             request_body = None
                     else:

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import logging
 
-from django.test import TestCase
-
 from core.db import best_effort_atomic
+from django.test import TestCase
 
 
 class BestEffortAtomicTests(TestCase):
@@ -25,6 +24,4 @@ class BestEffortAtomicTests(TestCase):
         with self.assertLogs(log, level="WARNING") as captured:
             with best_effort_atomic("persist audit row", logger=log):
                 raise RuntimeError("boom")
-        self.assertTrue(
-            any("failed to persist audit row" in m for m in captured.output)
-        )
+        self.assertTrue(any("failed to persist audit row" in m for m in captured.output))

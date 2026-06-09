@@ -1,4 +1,5 @@
 """ASGI config for this project."""
+
 import os
 import sys
 from pathlib import Path

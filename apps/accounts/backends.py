@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from django.contrib.auth.backends import ModelBackend
-
 from core.enums import Action
 from core.rbac_registry import app_resources, resource_for
+from django.contrib.auth.backends import ModelBackend
 
 
 class RBACBackend(ModelBackend):

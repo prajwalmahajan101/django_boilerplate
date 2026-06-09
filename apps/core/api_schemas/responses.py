@@ -8,9 +8,8 @@ error / throttle responses live here.
 
 from __future__ import annotations
 
-from drf_spectacular.utils import OpenApiExample, OpenApiResponse
-
 from core.api_schemas.envelope import error_envelope, error_example
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse
 
 not_found_response = OpenApiResponse(
     description="Resource not found.",

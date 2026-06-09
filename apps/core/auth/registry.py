@@ -11,9 +11,8 @@ from __future__ import annotations
 import logging
 import threading
 
-from django.conf import settings
-
 from core.auth.base import AuthProvider
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 

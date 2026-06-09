@@ -8,7 +8,7 @@ import os
 # Set test-specific env vars before importing base settings
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-not-for-production")
 
-from .base import *  # noqa: F401, F403, E402
+from .base import *
 
 DEBUG = False
 ALLOWED_HOSTS = ["testserver", "localhost", "127.0.0.1"]
@@ -49,7 +49,7 @@ CELERY_RESULT_BACKEND = "cache+memory://"
 
 # Disable throttling in tests
 REST_FRAMEWORK = {
-    **REST_FRAMEWORK,  # noqa: F405
+    **REST_FRAMEWORK,
     "DEFAULT_THROTTLE_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",

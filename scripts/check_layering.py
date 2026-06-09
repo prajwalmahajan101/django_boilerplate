@@ -40,6 +40,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CORE_ROOT = ROOT / "apps" / "core"
 
+
 # Discover sibling domain apps dynamically so adding a new app under
 # apps/ does NOT require editing this script. Anything that is a
 # directory under apps/ and is not "core" is treated as a forbidden

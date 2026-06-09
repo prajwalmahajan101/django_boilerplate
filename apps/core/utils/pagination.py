@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from rest_framework.pagination import PageNumberPagination
-
 from core.responses.paginated import PaginatedResponse
+from rest_framework.pagination import PageNumberPagination
 
 
 class StandardPageNumberPagination(PageNumberPagination):

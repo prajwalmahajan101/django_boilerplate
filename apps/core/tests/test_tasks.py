@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from django.test import TestCase, override_settings
-
 from core.tasks import enqueue, register_task, registered_tasks
 from core.tasks.registry import _reset_registry
+from django.test import TestCase, override_settings
 
 
 class RegisterTaskTests(TestCase):

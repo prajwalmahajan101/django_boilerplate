@@ -100,8 +100,7 @@ def retry_on_failure(service_name: str):
             # Exclude ServiceUnavailableError so retry doesn't defeat an
             # open circuit breaker when used inside @resilient (ISSUE-044).
             exception_classes = tuple(
-                cls for cls in exception_classes
-                if not issubclass(cls, ServiceUnavailableError)
+                cls for cls in exception_classes if not issubclass(cls, ServiceUnavailableError)
             )
             if not exception_classes:
                 return func(*args, **kwargs)

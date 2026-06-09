@@ -25,9 +25,8 @@ import functools
 import hashlib
 import logging
 
-from django.conf import settings
-
 from core.exceptions.infrastructure import InfrastructureError
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -69,14 +68,10 @@ def _fernet():
                 "Silent fallback to SECRET_KEY is disabled to prevent data "
                 "corruption on SECRET_KEY rotation."
             )
-        logger.warning(
-            "FIELD_ENCRYPTION_KEY not set; falling back to SECRET_KEY (DEBUG only)."
-        )
+        logger.warning("FIELD_ENCRYPTION_KEY not set; falling back to SECRET_KEY (DEBUG only).")
         key_source = getattr(settings, "SECRET_KEY", None)
         if not key_source:
-            raise EncryptionConfigError(
-                "Neither FIELD_ENCRYPTION_KEY nor SECRET_KEY is set."
-            )
+            raise EncryptionConfigError("Neither FIELD_ENCRYPTION_KEY nor SECRET_KEY is set.")
     digest = hashlib.sha256(key_source.encode()).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
@@ -117,9 +112,7 @@ class FernetCipher:
         try:
             return _fernet().decrypt(ciphertext.encode()).decode()
         except InvalidToken as exc:
-            logger.error(
-                "Fernet decryption failed — possible key rotation or data corruption."
-            )
+            logger.error("Fernet decryption failed — possible key rotation or data corruption.")
             raise DecryptionError(
                 "Failed to decrypt value. Check FIELD_ENCRYPTION_KEY configuration."
             ) from exc

@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from django.conf import LazySettings, settings as django_settings
+from django.conf import LazySettings
+from django.conf import settings as django_settings
 from django.core.exceptions import ImproperlyConfigured
 
 

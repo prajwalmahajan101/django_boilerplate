@@ -27,9 +27,9 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 import weakref
-from typing import Any, Callable, Protocol, runtime_checkable
+from collections.abc import Callable
+from typing import Any, Protocol, runtime_checkable
 
 from core.resilience.health import BackendHealth
 
@@ -117,7 +117,7 @@ def _run_warm_hooks() -> None:
     for hook in list(_warm_hooks):
         try:
             hook()
-        except Exception:  # noqa: BLE001 — warm hooks must not crash recovery
+        except Exception:
             logger.exception("warm hook failed during recovery")
 
 
@@ -131,15 +131,15 @@ def reset_backend(alias: str) -> bool:
     dependency-light at import time.
     """
     if alias.startswith("cache:"):
-        from core.resilience.cache.provider import reset_cache_backend  # noqa: PLC0415
+        from core.resilience.cache.provider import reset_cache_backend
 
         return reset_cache_backend(alias.removeprefix("cache:"))
     if alias.startswith("throttle:"):
-        from core.resilience.throttles.provider import reset_throttle_backend  # noqa: PLC0415
+        from core.resilience.throttles.provider import reset_throttle_backend
 
         return reset_throttle_backend(alias.removeprefix("throttle:"))
     if alias.startswith("breaker:"):
-        from core.resilience.circuit_breaker.provider import reset_breaker_registry  # noqa: PLC0415
+        from core.resilience.circuit_breaker.provider import reset_breaker_registry
 
         return reset_breaker_registry()
     logger.warning("reset_backend: unknown alias prefix %r", alias)
@@ -156,19 +156,18 @@ def attempt_recover_all() -> int:
     for backend in registered_backends():
         try:
             health = backend.health
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
         if health is BackendHealth.ACTIVE:
             continue
-        if health.needs_object_rebuild:
-            if reset_backend(backend.alias):
-                recovered += 1
-                continue
+        if health.needs_object_rebuild and reset_backend(backend.alias):
+            recovered += 1
+            continue
         # DEGRADED — flag flip via subsystem-internal probe.
         try:
             if backend.try_recover():
                 recovered += 1
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("try_recover raised for %s", getattr(backend, "alias", "?"))
     if recovered:
         _run_warm_hooks()
@@ -222,11 +221,11 @@ class ValkeyRecoveryMonitor:
         so importing this module doesn't drag Django config into scope.
         """
         try:
-            from django.core.cache import caches  # noqa: PLC0415
+            from django.core.cache import caches
 
             caches["default"].set("_valkey_recovery_probe", "ok", timeout=5)
             return caches["default"].get("_valkey_recovery_probe") == "ok"
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     def _any_degraded(self) -> bool:
@@ -234,7 +233,7 @@ class ValkeyRecoveryMonitor:
             try:
                 if backend.health is not BackendHealth.ACTIVE:
                     return True
-            except Exception:  # noqa: BLE001
+            except Exception:
                 continue
         return False
 
@@ -262,7 +261,7 @@ class ValkeyRecoveryMonitor:
                         )
                     # Reset the window so we don't re-trigger on the next tick.
                     self._consecutive_successes = 0
-            except Exception:  # noqa: BLE001 — never crash the monitor thread
+            except Exception:
                 logger.exception("ValkeyRecoveryMonitor loop iteration failed")
             self._stop.wait(self._probe_interval_s)
 

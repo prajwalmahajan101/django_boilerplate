@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from rest_framework import serializers
-
 from accounts.models import Role, User
+from rest_framework import serializers
 
 
 class RoleSerializer(serializers.ModelSerializer):
@@ -70,9 +69,7 @@ class UserProfileSerializer(UserSerializer):
 class GoogleCallbackSerializer(serializers.Serializer):
     """Validates the Google OAuth callback payload from the frontend."""
 
-    code = serializers.CharField(
-        required=True, help_text="Authorization code from Google"
-    )
+    code = serializers.CharField(required=True, help_text="Authorization code from Google")
     redirect_uri = serializers.URLField(
         required=True, help_text="Redirect URI used in the OAuth flow"
     )

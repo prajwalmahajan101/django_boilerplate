@@ -3,16 +3,14 @@
 import secrets
 from functools import cached_property
 
-from django.conf import settings
-from django.contrib.auth.models import AbstractUser
-from django.db import IntegrityError, models
-from django.db.models import Q
-
 from accounts.exceptions import APIKeyGenerationError
 from accounts.managers import UserManager
 from core.base.fields import EncryptedCharField
 from core.base.model import BaseModel
 from core.enums import Action, Resource
+from django.contrib.auth.models import AbstractUser
+from django.db import IntegrityError, models
+from django.db.models import Q
 
 
 class Permission(models.Model):

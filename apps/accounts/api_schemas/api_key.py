@@ -1,12 +1,11 @@
 """OpenAPI schemas for the DELETE / POST API-key state-transition endpoints."""
 
-from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
-
 from accounts.api_schemas._common import (
     _auth_required_schema,
     _error_response_schema,
 )
 from core.api_schemas import throttle_response
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 
 api_key_delete_schema = extend_schema(
     operation_id="api_keys_delete",

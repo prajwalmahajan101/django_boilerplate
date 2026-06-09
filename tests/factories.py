@@ -40,4 +40,4 @@ class UserFactory(factory.django.DjangoModelFactory):
         obj.set_password(raw)
         if create:
             obj.save(update_fields=["password"])
-        obj._raw_password = raw  # noqa: SLF001 — handy for login tests
+        obj._raw_password = raw
