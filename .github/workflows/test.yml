@@ -37,7 +37,7 @@ jobs:
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_PORT: "5432"
-      SECRET_KEY: django-insecure-ci-only-not-used-anywhere-real
+      SECRET_KEY: ci-only-not-a-real-secret
 
     steps:
       - uses: actions/checkout@v4
@@ -66,5 +66,5 @@ jobs:
       - name: Makemigrations is up to date (no model drift)
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Pytest (Makefile `test`: unit + integration + e2e, skip slow/external)
+      - name: "Pytest (make test - unit + integration + e2e, skips slow/external)"
         run: make test
