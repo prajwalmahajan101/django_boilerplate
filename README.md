@@ -1,5 +1,7 @@
 # Django Boilerplate
 
+[![test](https://github.com/prajwalmahajan101/django_boilerplate/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prajwalmahajan101/django_boilerplate/actions/workflows/test.yml)
+
 A production-grade Django 6 + DRF starter. Ships with:
 
 - **`apps/core/`** — base classes (`BaseModel`, `BaseService[T]`,
