@@ -44,9 +44,15 @@ class CompositeAuthentication(BaseAuthentication):
         ``authenticate_header`` separately. Caching the registry walk
         on the request avoids a second registry-lock acquisition + list
         construction on every 401.
+
+        ``isinstance(cached, list)`` (rather than ``is None``) is the
+        cache-hit gate so test doubles like ``MagicMock`` — whose
+        attribute access auto-creates a mock instead of raising — do
+        not poison the cache slot and silently disable the provider
+        chain.
         """
         cached = getattr(request, "_composite_auth_providers", None)
-        if cached is None:
+        if not isinstance(cached, list):
             cached = enabled_providers()
             with contextlib.suppress(AttributeError):
                 request._composite_auth_providers = cached

@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: ruff + django check + makemigrations (Python ${{ matrix.python-version }})
+    name: ruff + django check + makemigrations + pytest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -68,3 +68,6 @@ jobs:
 
       - name: Makemigrations is up to date (no model drift)
         run: python manage.py makemigrations --check --dry-run
+
+      - name: "Pytest (make test - unit + integration + e2e, skips slow/external)"
+        run: make test
