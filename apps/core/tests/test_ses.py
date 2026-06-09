@@ -18,11 +18,9 @@ from email import message_from_string
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError, EndpointConnectionError
-from django.test import TestCase, override_settings
-
 from core.exceptions.infrastructure import SESException, TransientError
 from core.utils.ses import send_email
-
+from django.test import TestCase, override_settings
 
 _SES_SETTINGS = dict(
     SES_SENDER_EMAIL="ops@example.com",
@@ -171,10 +169,9 @@ class SendEmailErrorClassificationTest(TestCase):
             )
 
     def test_missing_sender_raises_ses_exception(self):
-        with override_settings(SES_SENDER_EMAIL=""):
-            with self.assertRaises(SESException):
-                send_email(
-                    recipient_emails=["to@example.com"],
-                    subject="x",
-                    body_html="<p>x</p>",
-                )
+        with override_settings(SES_SENDER_EMAIL=""), self.assertRaises(SESException):
+            send_email(
+                recipient_emails=["to@example.com"],
+                subject="x",
+                body_html="<p>x</p>",
+            )

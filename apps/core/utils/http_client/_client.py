@@ -25,14 +25,6 @@ from typing import Any
 from urllib.parse import urlparse
 
 import requests
-from django.conf import settings
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
-
 from core.utils.http_client._errors import (
     ExternalTimeoutError,
     HttpResponse,
@@ -41,6 +33,13 @@ from core.utils.http_client._errors import (
 )
 from core.utils.http_client._session import get_session
 from core.utils.log_sanitization import safe_log_dict
+from django.conf import settings
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,9 +86,7 @@ def _assert_url_allowlisted(url: str) -> None:
     )
 
 
-def _resolve_and_validate(
-    url: str, *, strict: bool = True
-) -> tuple[str | None, list[str]]:
+def _resolve_and_validate(url: str, *, strict: bool = True) -> tuple[str | None, list[str]]:
     """Reject URLs that resolve to non-public IP space (SSRF defence).
 
     Returns ``(host, validated_addrs)`` — the addresses are the SAME
@@ -159,9 +156,7 @@ def _resolve_and_validate(
             or ip.is_unspecified
             or ip.is_multicast
         ):
-            raise OutboundURLNotAllowedError(
-                f"URL resolves to a non-public address ({addr})."
-            )
+            raise OutboundURLNotAllowedError(f"URL resolves to a non-public address ({addr}).")
     return host, addrs
 
 
@@ -187,11 +182,7 @@ def _patched_getaddrinfo(host, port, *args, **kwargs):
             except ValueError:
                 continue
             family = socket.AF_INET6 if ip_obj.version == 6 else socket.AF_INET
-            sockaddr = (
-                (addr, port or 0, 0, 0)
-                if ip_obj.version == 6
-                else (addr, port or 0)
-            )
+            sockaddr = (addr, port or 0, 0, 0) if ip_obj.version == 6 else (addr, port or 0)
             result.append((family, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", sockaddr))
         if result:
             return result
@@ -281,17 +272,13 @@ def make_http_request(
                 decorator = retry(
                     stop=stop_after_attempt(max_attempts),
                     wait=wait_exponential(min=1, max=10),
-                    retry=retry_if_exception_type(
-                        (TransientError, ExternalTimeoutError)
-                    ),
+                    retry=retry_if_exception_type((TransientError, ExternalTimeoutError)),
                     reraise=True,
                 )
                 _retry_cache[max_attempts] = decorator
 
     with _pin_dns(pin_host, pin_addrs):
-        return decorator(_do_request)(
-            method, url, headers, json_body, timeout, auth, raw_bytes
-        )
+        return decorator(_do_request)(method, url, headers, json_body, timeout, auth, raw_bytes)
 
 
 def _do_request(
@@ -338,13 +325,9 @@ def _do_request(
             "HTTP connection error: %s %s",
             method,
             url,
-            extra=safe_log_dict(
-                method=method, url=url, error_class=type(exc).__name__
-            ),
+            extra=safe_log_dict(method=method, url=url, error_class=type(exc).__name__),
         )
-        raise TransientError(
-            f"Connection error contacting {_safe_host(url)}"
-        ) from exc
+        raise TransientError(f"Connection error contacting {_safe_host(url)}") from exc
 
     body = resp.content if raw_bytes else _parse_response_body(resp)
 
@@ -353,15 +336,11 @@ def _do_request(
         method,
         url,
         resp.status_code,
-        extra=safe_log_dict(
-            method=method, url=url, status_code=resp.status_code
-        ),
+        extra=safe_log_dict(method=method, url=url, status_code=resp.status_code),
     )
 
     if resp.status_code >= 500:
-        raise TransientError(
-            f"Server error from {_safe_host(url)}: HTTP {resp.status_code}"
-        )
+        raise TransientError(f"Server error from {_safe_host(url)}: HTTP {resp.status_code}")
 
     return HttpResponse(
         status_code=resp.status_code,

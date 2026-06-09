@@ -14,20 +14,19 @@ import time
 from threading import Lock
 from typing import TYPE_CHECKING
 
-from rest_framework.throttling import SimpleRateThrottle
-
-from django.conf import settings as django_settings
 from core.resilience.cache.provider import get_cache
+from core.resilience.throttles import global_lua
 from core.resilience.throttles.base import (
     get_user_or_ip_ident,
     get_user_tier,
     log_throttle_event,
 )
-from core.resilience.throttles import global_lua
 from core.resilience.throttles.cache_adapter import DjangoCacheAdapter
 from core.resilience.throttles.lua_scripts import THROTTLE_LUA_SCRIPT
 from core.utils.log_sanitization import safe_log_dict
 from core.utils.valkey import get_valkey_client
+from django.conf import settings as django_settings
+from rest_framework.throttling import SimpleRateThrottle
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -192,7 +191,8 @@ class ValkeyRateThrottle(SimpleRateThrottle):
 
         if not allowed:
             log_throttle_event(
-                request, view,
+                request,
+                view,
                 scope=getattr(self, "scope", "unknown"),
                 rate=self.rate,
                 history_length=current_count,
@@ -216,7 +216,8 @@ class ValkeyRateThrottle(SimpleRateThrottle):
 
         if len(self.history) >= self.num_requests:
             log_throttle_event(
-                request, view,
+                request,
+                view,
                 scope=getattr(self, "scope", "unknown"),
                 rate=self.rate,
                 history_length=len(self.history),
@@ -345,7 +346,8 @@ class GlobalThrottle(ValkeyRateThrottle):
 
         if not allowed:
             log_throttle_event(
-                request, view,
+                request,
+                view,
                 scope=self.scope,
                 rate=self.rate,
                 history_length=effective_count,
@@ -376,14 +378,13 @@ class GlobalThrottle(ValkeyRateThrottle):
         effective_count = current_count + previous_count * (1 - window_position)
 
         request._throttle_limit = self.num_requests
-        request._throttle_remaining = max(
-            0, self.num_requests - math.ceil(effective_count)
-        )
+        request._throttle_remaining = max(0, self.num_requests - math.ceil(effective_count))
         request._throttle_reset = int(window_start + self.duration)
 
         if effective_count >= self.num_requests:
             log_throttle_event(
-                request, view,
+                request,
+                view,
                 scope=self.scope,
                 rate=self.rate,
                 history_length=int(effective_count),
@@ -427,5 +428,3 @@ class EndpointThrottle(ValkeyRateThrottle):
             return None
         ident = f"{self.scope}_{self._get_user_or_ip_ident(request)}"
         return self.cache_format % {"scope": "endpoint", "ident": ident}
-
-

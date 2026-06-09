@@ -68,16 +68,14 @@ def _resolve_classes() -> dict[str, type]:
         }
 
     except Exception as e:
-        logger.warning(
-            "Valkey unavailable for throttling, using DRF fallback: %s", e
-        )
+        logger.warning("Valkey unavailable for throttling, using DRF fallback: %s", e)
 
         from core.resilience.throttles.drf_impl import (
+            DRFBaseThrottle,
             DRFBurstThrottle,
             DRFEndpointThrottle,
             DRFGlobalThrottle,
             DRFUserTierThrottle,
-            DRFBaseThrottle,
         )
 
         return {

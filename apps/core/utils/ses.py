@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import mimetypes
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
-from typing import Any, Iterable
+from typing import Any
 
 from botocore.exceptions import BotoCoreError, ClientError
-from django.conf import settings
-
 from core.exceptions.infrastructure import (
     ExternalTimeoutError,
     SESException,
@@ -25,6 +25,7 @@ from core.resilience.decorators import resilient
 from core.utils.aws import get_aws_client
 from core.utils.log_sanitization import safe_log_dict
 from core.utils.logging import log_duration
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,9 @@ def _build_attachment_part(att: EmailAttachment):
     if main == "image" and sub:
         part = MIMEImage(att.data, _subtype=sub)
     elif main == "text":
-        part = MIMEText(att.data.decode("utf-8", errors="replace"), _subtype=sub or "plain", _charset="utf-8")
+        part = MIMEText(
+            att.data.decode("utf-8", errors="replace"), _subtype=sub or "plain", _charset="utf-8"
+        )
     else:
         # Default: application/* and everything else lands here.
         sub = sub or mimetypes.guess_extension(att.content_type) or "octet-stream"
@@ -110,10 +113,8 @@ def _classify_client_error(exc: ClientError) -> Exception:
     ``SESException`` and propagates to the caller without retry.
     """
     code = ""
-    try:
+    with contextlib.suppress(AttributeError):
         code = exc.response.get("Error", {}).get("Code", "")
-    except AttributeError:
-        pass
     if code in _SES_TRANSIENT_ERROR_CODES:
         return TransientError(f"SES transient failure ({code}): {exc}")
     return SESException(f"SES request failed ({code or 'Unknown'}): {exc}")
@@ -165,9 +166,7 @@ def send_email(
     """
     sender = sender_email or getattr(settings, "SES_SENDER_EMAIL", "")
     if not sender:
-        raise SESException(
-            "No sender email configured. Set SES_SENDER_EMAIL or pass sender_email."
-        )
+        raise SESException("No sender email configured. Set SES_SENDER_EMAIL or pass sender_email.")
 
     cc_emails = cc_emails or []
     bcc_emails = bcc_emails or []

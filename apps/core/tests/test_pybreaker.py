@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import time
 
-import pytest
-
 from core.resilience.circuit_breaker.base import CircuitBreakerConfig
 from core.resilience.circuit_breaker.pybreaker_impl import (
     PyBreakerCircuitBreaker,
@@ -108,9 +106,7 @@ class TestPyBreakerRegistry:
         assert "svc" not in reg.get_all_stats()
 
     def test_reset_all_closes_each_breaker(self) -> None:
-        reg = PyBreakerRegistry(
-            CircuitBreakerConfig(failure_threshold=1)
-        )
+        reg = PyBreakerRegistry(CircuitBreakerConfig(failure_threshold=1))
         cb = reg.get_or_create("svc")
         cb.record_failure(RuntimeError("boom"))
         assert not cb.is_available()

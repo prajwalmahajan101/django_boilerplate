@@ -20,8 +20,8 @@ DRF view layer already provides the routing/response shape.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def run_checks(checks: list[Check]) -> tuple[list[HealthCheckResult], bool]:
     for check in checks:
         try:
             results.append(check())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.exception("Health check %s raised", getattr(check, "__name__", "?"))
             results.append(
                 HealthCheckResult(
@@ -82,7 +82,7 @@ def db_check() -> HealthCheckResult:
             cursor.execute("SELECT 1")
             cursor.fetchone()
         return HealthCheckResult(name="database", healthy=True, detail="connected")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return HealthCheckResult(
             name="database",
             healthy=False,
@@ -112,11 +112,11 @@ def cache_check(alias: str = "default") -> HealthCheckResult:
 
             recovered = attempt_recover_all()
             detail = f"connected (recovered={recovered})" if recovered else "connected"
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("cache recovery dispatch failed")
             detail = "connected"
         return HealthCheckResult(name=f"cache[{alias}]", healthy=True, detail=detail)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return HealthCheckResult(
             name=f"cache[{alias}]",
             healthy=False,
@@ -140,10 +140,8 @@ def celery_broker_check() -> HealthCheckResult:
             conn.ensure_connection(max_retries=1, timeout=3)
         finally:
             conn.close()
-        return HealthCheckResult(
-            name="celery_broker", healthy=True, detail="connected"
-        )
-    except Exception as exc:  # noqa: BLE001
+        return HealthCheckResult(name="celery_broker", healthy=True, detail="connected")
+    except Exception as exc:
         return HealthCheckResult(
             name="celery_broker",
             healthy=False,

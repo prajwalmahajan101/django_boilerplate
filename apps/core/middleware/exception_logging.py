@@ -1,13 +1,12 @@
 """Middleware for exception logging with request context."""
 
 import logging
-from typing import Callable
-
-from django.http import HttpRequest, HttpResponse
-from rest_framework.exceptions import APIException
+from collections.abc import Callable
 
 from core.middleware.request_logging import get_user_id
 from core.utils.log_sanitization import safe_log_dict, truncate_for_log
+from django.http import HttpRequest, HttpResponse
+from rest_framework.exceptions import APIException
 
 logger = logging.getLogger(__name__)
 

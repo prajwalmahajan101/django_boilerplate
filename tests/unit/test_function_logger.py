@@ -74,9 +74,8 @@ def test_error_emitted_even_when_disabled(
     def boom() -> None:
         raise ValueError("nope")
 
-    with caplog.at_level(logging.ERROR):
-        with pytest.raises(ValueError):
-            boom()
+    with caplog.at_level(logging.ERROR), pytest.raises(ValueError):
+        boom()
 
     error_events = [r for r in caplog.records if r.__dict__.get("event") == "function_error"]
     assert len(error_events) == 1

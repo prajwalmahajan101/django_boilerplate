@@ -2,7 +2,7 @@
 
 import os
 
-from .base import *  # noqa: F401, F403
+from .base import *
 
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
@@ -17,7 +17,7 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "django-db")
 
 # Disable throttling for local dev
 REST_FRAMEWORK = {
-    **REST_FRAMEWORK,  # noqa: F405
+    **REST_FRAMEWORK,
     "DEFAULT_THROTTLE_CLASSES": [],
 }
 

@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from io import BytesIO
-
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.http import QueryDict
-from django.test import SimpleTestCase, override_settings
-
 from core.api_log.sanitizers import (
     serialize_error_body,
     summarise_body_for_audit,
 )
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import QueryDict
+from django.test import SimpleTestCase, override_settings
 
 
 class SummariseBodyForAuditTests(SimpleTestCase):
@@ -30,9 +27,7 @@ class SummariseBodyForAuditTests(SimpleTestCase):
     def test_querydict_with_uploaded_file(self) -> None:
         qd = QueryDict(mutable=True)
         qd["name"] = "John"
-        upload = SimpleUploadedFile(
-            "doc.pdf", b"binarydata", content_type="application/pdf"
-        )
+        upload = SimpleUploadedFile("doc.pdf", b"binarydata", content_type="application/pdf")
         qd.appendlist("doc", upload)
         result = summarise_body_for_audit(qd)
         self.assertTrue(result["__multipart__"])

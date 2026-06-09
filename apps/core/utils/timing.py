@@ -30,9 +30,9 @@ counter, or a percentile probe without forcing a log line.
 from __future__ import annotations
 
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Iterator
 
 
 @dataclass

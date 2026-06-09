@@ -1,14 +1,13 @@
 """OpenAPI schemas for the GET / PATCH /api/accounts/auth/me/ endpoints."""
 
-from drf_spectacular.utils import OpenApiExample, OpenApiResponse, inline_serializer
-from rest_framework import serializers
-
 from accounts.api_schemas._common import (
     _auth_required_schema,
     _error_response_schema,
 )
 from accounts.serializers import UserProfileSerializer
 from core.api_schemas import throttle_response
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, inline_serializer
+from rest_framework import serializers
 
 _user_profile_example = {
     "id": 1,

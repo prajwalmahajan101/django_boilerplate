@@ -34,8 +34,13 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name in ("UserTierThrottle", "BurstThrottle", "GlobalThrottle",
-                "EndpointThrottle", "ValkeyRateThrottle"):
+    if name in (
+        "UserTierThrottle",
+        "BurstThrottle",
+        "GlobalThrottle",
+        "EndpointThrottle",
+        "ValkeyRateThrottle",
+    ):
         classes = get_throttle_classes()
         if name in classes:
             return classes[name]

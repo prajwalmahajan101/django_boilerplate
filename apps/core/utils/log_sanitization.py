@@ -11,7 +11,6 @@ from typing import Any
 
 from django.conf import settings
 
-
 # =============================================================================
 # Logging Sanitization Utilities
 # =============================================================================
@@ -80,7 +79,7 @@ def _sanitize_value(
     if isinstance(value, bool):
         return value
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return value
 
     if isinstance(value, str):
@@ -92,7 +91,7 @@ def _sanitize_value(
     if isinstance(value, dict):
         return _sanitize_dict_for_log(value, max_str, max_keys, max_items, depth)
 
-    if isinstance(value, (list, tuple, set, frozenset)):
+    if isinstance(value, list | tuple | set | frozenset):
         return _sanitize_iterable_for_log(value, max_str, max_keys, max_items, depth)
 
     try:
@@ -109,9 +108,7 @@ def _sanitize_string_for_log(value: str, max_length: int) -> str:
     sanitized = sanitized.replace("\r", "\\r")
     sanitized = sanitized.replace("\t", "\\t")
 
-    sanitized = "".join(
-        char if ord(char) >= 32 else f"\\x{ord(char):02x}" for char in sanitized
-    )
+    sanitized = "".join(char if ord(char) >= 32 else f"\\x{ord(char):02x}" for char in sanitized)
 
     if len(sanitized) > max_length:
         half = (max_length - 20) // 2
@@ -150,9 +147,7 @@ def _sanitize_dict_for_log(
         if sensitive_pattern.search(str_key):
             result[str_key] = mask_value
         else:
-            result[str_key] = _sanitize_value(
-                value[key], max_str, max_keys, max_items, depth + 1
-            )
+            result[str_key] = _sanitize_value(value[key], max_str, max_keys, max_items, depth + 1)
 
     if truncated:
         result["__truncated__"] = f"{len(keys) - max_keys} more keys"
@@ -172,8 +167,7 @@ def _sanitize_iterable_for_log(
     truncated = len(items) > max_items
 
     result = [
-        _sanitize_value(item, max_str, max_keys, max_items, depth + 1)
-        for item in items[:max_items]
+        _sanitize_value(item, max_str, max_keys, max_items, depth + 1) for item in items[:max_items]
     ]
 
     if truncated:

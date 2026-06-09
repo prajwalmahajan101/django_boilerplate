@@ -11,7 +11,7 @@ ad-hoc header dicts at every service.
 from __future__ import annotations
 
 import enum
-from typing import Mapping
+from collections.abc import Mapping
 
 
 class AuthType(enum.Enum):

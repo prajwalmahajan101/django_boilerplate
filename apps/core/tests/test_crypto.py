@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from django.test import TestCase, override_settings
-
 from core.utils import crypto
 from core.utils.crypto import (
     DecryptionError,
     EncryptionConfigError,
     FernetCipher,
 )
+from django.test import TestCase, override_settings
 
 
 class FernetCipherTests(TestCase):

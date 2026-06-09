@@ -52,8 +52,7 @@ def _create_cache(alias: str) -> BaseCacheBackend:
         return ValkeyCacheBackend(cache_alias=alias)
     except Exception as e:
         logger.warning(
-            "Failed to create Valkey cache backend (alias=%s), "
-            "using in-memory: %s",
+            "Failed to create Valkey cache backend (alias=%s), " "using in-memory: %s",
             alias,
             e,
         )

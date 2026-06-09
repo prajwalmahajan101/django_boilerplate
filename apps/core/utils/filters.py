@@ -59,16 +59,12 @@ def _coerce(raw: str, target: type, param_name: str) -> Any:
         try:
             return int(raw)
         except (TypeError, ValueError) as exc:
-            raise InvalidInputError(
-                f"Parameter '{param_name}' must be an integer."
-            ) from exc
+            raise InvalidInputError(f"Parameter '{param_name}' must be an integer.") from exc
     if target is bool:
         lower = raw.strip().lower()
         if lower in _BOOL_TRUE:
             return True
         if lower in _BOOL_FALSE:
             return False
-        raise InvalidInputError(
-            f"Parameter '{param_name}' must be a boolean (true/false)."
-        )
+        raise InvalidInputError(f"Parameter '{param_name}' must be a boolean (true/false).")
     return raw

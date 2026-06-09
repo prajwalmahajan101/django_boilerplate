@@ -34,10 +34,10 @@ class SoftDeletableQuerySet(models.QuerySet):
     no-op because the missed filter would mask deleted rows.
     """
 
-    def active(self) -> "SoftDeletableQuerySet":
+    def active(self) -> SoftDeletableQuerySet:
         return self.filter(is_active=True)
 
-    def inactive(self) -> "SoftDeletableQuerySet":
+    def inactive(self) -> SoftDeletableQuerySet:
         return self.filter(is_active=False)
 
 

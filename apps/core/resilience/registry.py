@@ -8,10 +8,9 @@ import copy
 import importlib
 from threading import Lock
 
-from django.conf import settings
-
 from core.resilience.circuit_breaker.base import BaseCircuitBreaker, CircuitBreakerConfig
 from core.resilience.circuit_breaker.provider import get_registry
+from django.conf import settings
 
 
 class ResilienceRegistry:
@@ -99,9 +98,7 @@ class ResilienceRegistry:
                     excluded_exceptions=tuple(excluded),
                 )
                 cb_registry = get_registry()
-                self._breakers[service_name] = cb_registry.get_or_create(
-                    service_name, config
-                )
+                self._breakers[service_name] = cb_registry.get_or_create(service_name, config)
             return self._breakers[service_name]
 
 

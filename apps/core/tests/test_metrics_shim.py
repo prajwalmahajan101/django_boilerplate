@@ -16,14 +16,13 @@ from __future__ import annotations
 
 import logging
 
-from django.test import Client, SimpleTestCase, override_settings
-
 from core.metrics import (
     CardinalityViolation,
     record_counter,
     record_duration,
     record_gauge,
 )
+from django.test import Client, SimpleTestCase, override_settings
 
 
 class CardinalityContractTests(SimpleTestCase):
@@ -100,6 +99,7 @@ class MetricsEndpointTests(SimpleTestCase):
         response = client.get("/api/metrics")
         try:
             import prometheus_client  # noqa: F401
+
             prom_installed = True
         except ImportError:
             prom_installed = False

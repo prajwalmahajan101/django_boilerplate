@@ -18,12 +18,11 @@ All state mutations use a single Lua script (one EVALSHA round-trip) for atomici
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 from threading import Lock
 from typing import Any
-
-from valkey.exceptions import NoScriptError
 
 from core.resilience.circuit_breaker.base import (
     BaseCircuitBreaker,
@@ -35,6 +34,7 @@ from core.resilience.circuit_breaker.pybreaker_impl import (
     PyBreakerRegistry,
 )
 from core.utils.valkey import get_valkey_client
+from valkey.exceptions import NoScriptError
 
 logger = logging.getLogger(__name__)
 
@@ -274,18 +274,14 @@ class ValkeyRegistry(BaseCircuitBreakerRegistry):
         try:
             self._valkey_client = get_valkey_client(valkey_alias)
             self._lua_sha = self._valkey_client.script_load(CIRCUIT_BREAKER_LUA_SCRIPT)
-            logger.info(
-                "Valkey circuit breaker registry initialized (key_prefix=%s)", key_prefix
-            )
+            logger.info("Valkey circuit breaker registry initialized (key_prefix=%s)", key_prefix)
         except Exception as e:
             logger.warning(
                 "Failed to initialize Valkey circuit breaker registry, "
                 "falling back to pybreaker: %s",
                 e,
             )
-            self._degraded_registry = PyBreakerRegistry(
-                default_config=self._default_config
-            )
+            self._degraded_registry = PyBreakerRegistry(default_config=self._default_config)
 
     @property
     def _is_degraded(self) -> bool:
@@ -321,10 +317,8 @@ class ValkeyRegistry(BaseCircuitBreakerRegistry):
 
         with self._lock:
             self._breakers.pop(name, None)
-        try:
+        with contextlib.suppress(Exception):
             self._valkey_client.delete(f"{self._key_prefix}:{name}")
-        except Exception:
-            pass
 
     def get_all_stats(self) -> dict[str, dict[str, Any]]:
         if self._is_degraded:
@@ -349,8 +343,6 @@ class ValkeyRegistry(BaseCircuitBreakerRegistry):
 
         with self._lock:
             for name in self._breakers:
-                try:
+                with contextlib.suppress(Exception):
                     self._valkey_client.delete(f"{self._key_prefix}:{name}")
-                except Exception:
-                    pass
             self._breakers.clear()

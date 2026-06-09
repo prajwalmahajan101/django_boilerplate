@@ -5,13 +5,12 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from django.db import transaction
-from django.utils import timezone
-
 from accounts.exceptions import InvalidTimezoneError, NoFieldsToUpdateError
 from accounts.models import APIKey
 from accounts.repositories import UserRepository
 from core.base.service import BaseService
+from django.db import transaction
+from django.utils import timezone
 
 __all__ = ["APIKeyService", "UserService"]
 
@@ -44,8 +43,7 @@ class APIKeyService(BaseService[APIKey]):
                 should return 404.
         """
         api_key = (
-            APIKey.objects
-            .select_related("user")
+            APIKey.objects.select_related("user")
             .select_for_update(of=("self",))
             .filter(pk=pk, is_active=True)
             .first()
@@ -76,9 +74,7 @@ class UserService:
         Locking + atomicity now live on ``UserRepository.update`` — see
         ISSUE-008. Don't re-wrap with ``transaction.atomic`` here.
         """
-        update_data = {
-            k: v for k, v in data.items() if k in self.UPDATABLE_PROFILE_FIELDS
-        }
+        update_data = {k: v for k, v in data.items() if k in self.UPDATABLE_PROFILE_FIELDS}
 
         if not update_data:
             raise NoFieldsToUpdateError()

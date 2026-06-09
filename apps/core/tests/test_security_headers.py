@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from unittest import mock
 
-from django.http import HttpResponse
-from django.test import RequestFactory, SimpleTestCase, override_settings
-
 from core.middleware.security_headers import (
     _BASE_HEADERS,
     _DOCS_CSP,
     SecurityHeadersMiddleware,
 )
+from django.http import HttpResponse
+from django.test import RequestFactory, SimpleTestCase, override_settings
 
 
 def _get_response(_request):

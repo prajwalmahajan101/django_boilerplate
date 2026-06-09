@@ -7,17 +7,15 @@ integration tests against the docker-compose stack).
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-from django.test import SimpleTestCase
+from unittest.mock import patch
 
 from core.resilience.health import BackendHealth
 from core.resilience.recovery import (
     attempt_recover_all,
     register_for_recovery,
-    registered_backends,
     reset_backend,
 )
+from django.test import SimpleTestCase
 
 
 class _StubBackend:

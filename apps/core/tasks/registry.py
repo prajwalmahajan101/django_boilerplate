@@ -10,7 +10,8 @@ discovers tasks through Celery's own autodiscover mechanism.
 from __future__ import annotations
 
 import threading
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from celery import shared_task
 

@@ -2,13 +2,11 @@
 
 import os
 
-from .base import *  # noqa: F401, F403
+from .base import *
 
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
-]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 # --------------------------------------------------------------------------
 # Security hardening
@@ -64,7 +62,7 @@ CACHES = {
 # --------------------------------------------------------------------------
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
-CELERY_WORKER_CONCURRENCY = _env_int("CELERY_WORKER_CONCURRENCY", "4")  # noqa: F405
+CELERY_WORKER_CONCURRENCY = _env_int("CELERY_WORKER_CONCURRENCY", "4")
 
 if not CELERY_BROKER_URL:
     raise ValueError("CELERY_BROKER_URL must be set in production environment")
@@ -84,9 +82,7 @@ if not os.getenv("POSTGRES_DB") or not os.getenv("POSTGRES_HOST"):
 
 _db_password = os.getenv("POSTGRES_PASSWORD", "")
 if not _db_password or _db_password == "postgres":
-    raise ValueError(
-        "POSTGRES_PASSWORD must be set to a non-default value in production"
-    )
+    raise ValueError("POSTGRES_PASSWORD must be set to a non-default value in production")
 
 # Reject wildcard CORS in production
 if globals().get("CORS_ALLOW_ALL_ORIGINS", False):

@@ -1,10 +1,9 @@
 """Repositories for auth-related models (User, Role)."""
 
+from accounts.models import Role
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import QuerySet
-
-from accounts.models import Role
 
 User = get_user_model()
 
@@ -43,16 +42,11 @@ class UserRepository:
         pass the ``user_id``, not a pre-fetched instance, so the lock
         is acquired here under ``@transaction.atomic``.
         """
-        user = (
-            self.get_queryset()
-            .select_for_update()
-            .get(pk=user_id)
-        )
+        user = self.get_queryset().select_for_update().get(pk=user_id)
         for field, value in data.items():
             setattr(user, field, value)
         user.save(update_fields=list(data.keys()))
         return user
-
 
 
 class RoleRepository:
@@ -71,4 +65,3 @@ class RoleRepository:
 
     def get_default_roles(self) -> QuerySet[Role]:
         return self.get_queryset().filter(is_default=True)
-

@@ -1,10 +1,9 @@
 """Base admin classes with Unfold styling and automatic audit field handling."""
 
+from core.base.widgets import JsonEditorWidget
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.db import models
 from unfold.admin import ModelAdmin, TabularInline
-
-from core.base.widgets import JsonEditorWidget
 
 
 class BaseModelAdmin(ModelAdmin):
@@ -22,12 +21,18 @@ class BaseModelAdmin(ModelAdmin):
         models.JSONField: {"widget": JsonEditorWidget},
     }
 
-    audit_fieldset = ("Audit Trail", {
-        "fields": (
-            "created_by", "updated_by", "created_at", "updated_at",
-        ),
-        "classes": ("collapse",),
-    })
+    audit_fieldset = (
+        "Audit Trail",
+        {
+            "fields": (
+                "created_by",
+                "updated_by",
+                "created_at",
+                "updated_at",
+            ),
+            "classes": ("collapse",),
+        },
+    )
 
     def get_readonly_fields(self, request, obj=None):
         readonly = set(super().get_readonly_fields(request, obj))
@@ -37,12 +42,9 @@ class BaseModelAdmin(ModelAdmin):
     def get_fieldsets(self, request, obj=None):
         fieldsets = super().get_fieldsets(request, obj)
         audit_fields = {"created_by", "updated_by", "created_at", "updated_at"}
-        already_present = any(
-            audit_fields & set(fs[1].get("fields", ()))
-            for fs in fieldsets
-        )
+        already_present = any(audit_fields & set(fs[1].get("fields", ())) for fs in fieldsets)
         if not already_present:
-            fieldsets = list(fieldsets) + [self.audit_fieldset]
+            fieldsets = [*list(fieldsets), self.audit_fieldset]
         return fieldsets
 
     def save_model(self, request, obj, form, change):
@@ -73,5 +75,3 @@ class BaseGenericTabularInline(GenericTabularInline, TabularInline):
 
     readonly_fields = ("created_by", "updated_by", "created_at", "updated_at")
     extra = 0
-
-

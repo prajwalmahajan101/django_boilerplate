@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Layer auto-marking
 # ---------------------------------------------------------------------------
@@ -42,13 +41,14 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.integration)
         elif "/tests/e2e/" in path:
             item.add_marker(pytest.mark.e2e)
-        elif "/apps/" in path and "/tests/" in path:
+        elif (
+            "/apps/" in path
+            and "/tests/" in path
+            and not any(m.name in {"unit", "integration", "e2e"} for m in item.iter_markers())
+        ):
             # App-co-located tests default to unit unless the test
             # explicitly opts into another layer.
-            if not any(
-                m.name in {"unit", "integration", "e2e"} for m in item.iter_markers()
-            ):
-                item.add_marker(pytest.mark.unit)
+            item.add_marker(pytest.mark.unit)
 
 
 # ---------------------------------------------------------------------------

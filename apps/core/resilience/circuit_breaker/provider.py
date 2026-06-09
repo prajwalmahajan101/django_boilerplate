@@ -17,7 +17,6 @@ from threading import Lock
 
 from core.resilience.circuit_breaker.base import (
     BaseCircuitBreakerRegistry,
-    CircuitBreakerConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -67,8 +66,7 @@ def _create_registry() -> BaseCircuitBreakerRegistry:
         return registry
     except Exception as e:
         logger.warning(
-            "Failed to create Valkey circuit breaker registry, "
-            "using pybreaker (in-memory): %s",
+            "Failed to create Valkey circuit breaker registry, " "using pybreaker (in-memory): %s",
             e,
         )
         from core.resilience.circuit_breaker.pybreaker_impl import PyBreakerRegistry

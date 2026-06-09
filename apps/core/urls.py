@@ -1,6 +1,5 @@
-from django.urls import path
-
 from core.views import csp_report, health_check, metrics_endpoint, readiness_check
+from django.urls import path
 
 app_name = "core"
 

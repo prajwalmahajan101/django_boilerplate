@@ -27,9 +27,7 @@ def sanitize_string(value: str, max_length: int = 1000) -> str:
     to database drivers via parameterized queries which handle escaping internally.
     """
     if len(value) > max_length:
-        raise InvalidInputError(
-            f"String too long: {len(value)} chars (max: {max_length})"
-        )
+        raise InvalidInputError(f"String too long: {len(value)} chars (max: {max_length})")
 
     return value
 

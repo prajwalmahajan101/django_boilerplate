@@ -11,8 +11,8 @@ race on the first ``SCRIPT LOAD`` round-trip.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from threading import Lock
-from typing import Callable
 
 from core.resilience.throttles.lua_scripts import GLOBAL_THROTTLE_LUA_SCRIPT
 

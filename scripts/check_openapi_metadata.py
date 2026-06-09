@@ -64,8 +64,19 @@ CBV_BASE_NAMES = {
 }
 
 VERB_METHODS = {
-    "get", "post", "put", "patch", "delete", "head", "options",
-    "list", "retrieve", "create", "update", "partial_update", "destroy",
+    "get",
+    "post",
+    "put",
+    "patch",
+    "delete",
+    "head",
+    "options",
+    "list",
+    "retrieve",
+    "create",
+    "update",
+    "partial_update",
+    "destroy",
 }
 
 
@@ -102,9 +113,7 @@ def _is_api_view(decorators: list[ast.expr]) -> bool:
 
 def _class_violations(node: ast.ClassDef) -> list[tuple[int, str, str]]:
     """Return violations for a class definition."""
-    base_names = {
-        b.id for b in node.bases if isinstance(b, ast.Name)
-    } | {
+    base_names = {b.id for b in node.bases if isinstance(b, ast.Name)} | {
         b.attr for b in node.bases if isinstance(b, ast.Attribute)
     }
     if not (base_names & CBV_BASE_NAMES):
@@ -112,10 +121,7 @@ def _class_violations(node: ast.ClassDef) -> list[tuple[int, str, str]]:
 
     has_serializer = any(
         isinstance(stmt, ast.Assign)
-        and any(
-            isinstance(t, ast.Name) and t.id == "serializer_class"
-            for t in stmt.targets
-        )
+        and any(isinstance(t, ast.Name) and t.id == "serializer_class" for t in stmt.targets)
         for stmt in node.body
     )
     has_schema_on_class = _has_extend_schema(node.decorator_list)

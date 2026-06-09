@@ -18,14 +18,14 @@ import logging
 import queue
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from typing import Callable
 
 logger = logging.getLogger(__name__)
 
 
 _registry_lock = threading.RLock()
-_queues: dict[str, "FireAndForgetQueue"] = {}
+_queues: dict[str, FireAndForgetQueue] = {}
 
 
 class FireAndForgetQueue:
@@ -107,7 +107,7 @@ class FireAndForgetQueue:
     def _run_task_safely(fn: Callable[[], None]) -> None:
         try:
             fn()
-        except Exception:  # noqa: BLE001 — best-effort: log + drop
+        except Exception:
             logger.exception("fire_and_forget task raised")
 
     def drain(self, timeout: float = 5.0) -> bool:

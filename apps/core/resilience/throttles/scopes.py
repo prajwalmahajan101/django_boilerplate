@@ -41,15 +41,11 @@ def parse_rate(rate: str) -> tuple[int, int]:
     """
     match = re.fullmatch(r"\s*(\d+)\s*/\s*(\w+)\s*", rate)
     if not match:
-        raise ValueError(
-            f"Invalid rate '{rate}'. Expected '<int>/<unit>' (e.g. '100/min')."
-        )
+        raise ValueError(f"Invalid rate '{rate}'. Expected '<int>/<unit>' (e.g. '100/min').")
     limit_str, unit = match.groups()
     unit = unit.lower()
     if unit not in _UNIT_TO_SECONDS:
-        raise ValueError(
-            f"Unknown rate unit '{unit}'. Use s, m, h, or d (or longer aliases)."
-        )
+        raise ValueError(f"Unknown rate unit '{unit}'. Use s, m, h, or d (or longer aliases).")
     return int(limit_str), _UNIT_TO_SECONDS[unit]
 
 

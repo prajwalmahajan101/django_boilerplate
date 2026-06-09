@@ -69,7 +69,7 @@ class ValkeyCacheBackend(BaseCacheBackend):
             from core.resilience.recovery import register_for_recovery
 
             register_for_recovery(self)
-        except Exception:  # noqa: BLE001 — never fail backend init
+        except Exception:
             logger.exception("cache backend failed to register for recovery")
 
     @property
@@ -116,7 +116,7 @@ class ValkeyCacheBackend(BaseCacheBackend):
             self._cache.set("_valkey_recovery_probe", "ok", timeout=5)
             if self._cache.get("_valkey_recovery_probe") != "ok":
                 return False
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.info(
                 "cache try_recover failed for %s: %s",
                 self.alias,
@@ -155,7 +155,11 @@ class ValkeyCacheBackend(BaseCacheBackend):
         return fallback_func(*args, **kwargs)
 
     def get(self, key: str) -> Any | None:
-        return self._with_fallback("get", self._cache.get, key) if self._cache is not None else self._fallback.get(key)
+        return (
+            self._with_fallback("get", self._cache.get, key)
+            if self._cache is not None
+            else self._fallback.get(key)
+        )
 
     def set(self, key: str, value: Any, timeout: int | None = None) -> None:
         if self._cache is not None:
@@ -195,7 +199,11 @@ class ValkeyCacheBackend(BaseCacheBackend):
         return result
 
     def add(self, key: str, value: Any, timeout: int | None = None) -> bool:
-        return self._with_fallback("add", self._cache.add, key, value, timeout=timeout) if self._cache is not None else self._fallback.add(key, value, timeout=timeout)
+        return (
+            self._with_fallback("add", self._cache.add, key, value, timeout=timeout)
+            if self._cache is not None
+            else self._fallback.add(key, value, timeout=timeout)
+        )
 
     def clear(self) -> None:
         if self._cache is not None:

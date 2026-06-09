@@ -54,11 +54,7 @@ def resource_for(app_label: str, model_name: str) -> str | None:
 def app_resources(app_label: str) -> list[str]:
     """Return every Resource registered for any model in ``app_label``."""
     prefix = f"{app_label}.".lower()
-    return [
-        resource
-        for key, resource in _RESOURCE_FOR_MODEL.items()
-        if key.startswith(prefix)
-    ]
+    return [resource for key, resource in _RESOURCE_FOR_MODEL.items() if key.startswith(prefix)]
 
 
 def registered_mappings() -> dict[str, str]:

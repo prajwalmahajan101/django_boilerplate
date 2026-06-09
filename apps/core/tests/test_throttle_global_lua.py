@@ -10,7 +10,6 @@ from threading import Thread
 from unittest.mock import MagicMock
 
 import pytest
-
 from core.resilience.throttles import global_lua
 
 
@@ -67,10 +66,7 @@ def test_concurrent_calls_load_once() -> None:
     client.script_load.return_value = "abc123"
     factory = MagicMock(return_value=client)
 
-    threads = [
-        Thread(target=lambda: global_lua.ensure_loaded(factory))
-        for _ in range(8)
-    ]
+    threads = [Thread(target=lambda: global_lua.ensure_loaded(factory)) for _ in range(8)]
     for t in threads:
         t.start()
     for t in threads:

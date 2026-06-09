@@ -2,11 +2,9 @@
 
 import logging
 
-from django.db import models
-
-from cryptography.fernet import InvalidToken
-
 from core.utils.crypto import DecryptionError, _fernet
+from cryptography.fernet import InvalidToken
+from django.db import models
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +54,7 @@ class EncryptedCharField(models.CharField):
             )
             raise DecryptionError(
                 "Failed to decrypt field value. Check FIELD_ENCRYPTION_KEY configuration."
-            )
+            ) from None
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()
