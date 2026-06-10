@@ -20,7 +20,7 @@ from core.lifecycle.healthcheck import (
     db_check,
     run_checks,
 )
-from core.resilience.throttles import BurstThrottle
+from resilience_kit.adapters.django.drf_throttles import BurstThrottle
 
 logger = logging.getLogger(__name__)
 

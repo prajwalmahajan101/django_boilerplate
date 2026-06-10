@@ -234,11 +234,13 @@ REST_FRAMEWORK = {
         # ``limit_req`` continues to provide the system-wide ceiling.
     ],
     "DEFAULT_THROTTLE_RATES": {
-        # `auth_burst` scope is used by AuthEndpointThrottle (5/min anon).
-        # Distinct from the existing `auth` scope (20/hour) — the two are
-        # complementary: `auth` catches sustained brute force, `auth_burst`
-        # catches a fast credential-stuffing burst.
-        "auth_burst": "5/min",
+        # `auth` (sustained 20/hour anon-IP) — consumed by the local
+        # ``accounts.views.AuthThrottle``. ``auth_burst`` (5/min anon-IP)
+        # — consumed by ``core.middleware.throttling.AuthEndpointThrottle``.
+        # The two are complementary: ``auth`` catches sustained brute
+        # force, ``auth_burst`` catches a fast credential-stuffing burst.
+        "auth": os.getenv("RATE_LIMIT_AUTH", "20/hour"),
+        "auth_burst": os.getenv("RATE_LIMIT_AUTH_BURST", "5/min"),
     },
     # Number of trusted proxy hops in front of the app. DRF's
     # ``BaseThrottle.get_ident`` reads this to decide how many entries

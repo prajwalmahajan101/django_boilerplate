@@ -21,7 +21,7 @@ from core.exceptions.infrastructure import (
     SESException,
     TransientError,
 )
-from core.resilience.decorators import resilient
+from resilience_kit import resilient
 from core.utils.aws import get_aws_client
 from core.utils.log_sanitization import safe_log_dict
 from core.utils.logging import log_duration

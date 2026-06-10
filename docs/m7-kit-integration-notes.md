@@ -104,9 +104,50 @@
   Django generates a no-op migration purely for the import path
   rewrite. Annoying but unavoidable for downstream consumers.
 
-## Step 7 — Codemod (pending)
+## Step 7 — Codemod + exception bridge + handler composition
 
-(notes added live)
+- **P0** — kit ships no `resilience_kit.utils` sub-package, but MIGRATION
+  §2 row "`core/utils/{log_sanitization,function_logger,network,timing,
+  data}.py` delete → `from resilience_kit.utils.{…} import …`" claims it
+  does. Verified via `ModuleNotFoundError: No module named
+  'resilience_kit.utils'`. Boilerplate has to **keep**
+  `core/utils/{log_sanitization,network,timing,function_logger,data}.py`
+  — Step 8 deletion list trimmed.
+  - **Ask kit**: ship `resilience_kit.utils.*` or remove the rows from
+    the MIGRATION table.
+- **P0** — `resilience_kit.metrics` exposes `MetricsSink` /
+  `NoopMetricsSink` / `StdlibLoggingMetricsSink` / `get_metrics()` — a
+  Protocol-based sink API. The boilerplate's `core.metrics` ships free
+  functions `record_duration` / `record_counter` / `record_gauge` plus
+  a runtime cardinality contract (`_assert_bounded`,
+  `_BOUNDED_LABEL_KEYS`). Surfaces are incompatible; rewriting every
+  caller (`middleware/metrics_middleware.py`, `utils/logging.py`,
+  `tests/test_metrics_shim.py`) to the Protocol API would lose the
+  bounded-label guard. **Keep** `core.metrics`; remove from Step 8
+  delete list.
+  - **Ask kit**: either ship a free-function shim or document the
+    Protocol API as additive (not a replacement for project-level
+    metrics modules).
+- **PRAISE** — single-line bridge `class BaseCustomError(ResilienceKitError)`
+  + composition wrapper in `handler.py` makes every domain exception
+  simultaneously envelope-aware AND kit-aware. Zero subclass edits.
+  Kit's flat `__init__(message, *, details)` signature composes
+  cleanly with `BaseCustomError.__init__` calls already in place.
+- **P1** — kit ships no `GlobalThrottle`. Boilerplate's local
+  `class AuthThrottle(ValkeyRateThrottle)` parent is gone; rewrote it
+  as `class AuthThrottle(rest_framework.throttling.AnonRateThrottle)`
+  with scope `"auth"` and rate from `DEFAULT_THROTTLE_RATES["auth"]`.
+  Loses Valkey-backed sliding window for that endpoint family —
+  acceptable because the burst throttle (`AuthEndpointThrottle`) and
+  nginx still provide layered defence.
+- **P2** — kit `reset_all_singletons()` is **synchronous**
+  (`() -> None`), not a coroutine. Logical given Django-sync tests; just
+  surprised because the FastAPI adapter exposed an async equivalent.
+  Doc could call out the sync/async parity.
+- **PRAISE** — `resilience_kit.registry.register_service(name, overrides)`
+  is a drop-in for the boilerplate's `register_resilience_service`;
+  `core.registries.__init__` re-exports it as a bound method without
+  any wrapper code. AppConfig.ready() flow stayed identical.
 
 ## Step 8 — Delete embedded modules + exceptions bridge (pending)
 

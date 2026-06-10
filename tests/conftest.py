@@ -124,7 +124,11 @@ def _clear_caches():
     state between test cases on the same process. Single source of
     truth lives in ``core.testing.reset_all_singletons``.
     """
-    from core.testing import reset_all_singletons
+    # Kit-owned singletons (registry, breakers, throttle buckets, audit
+    # dispatcher, settings cache, recovery state) reset via the kit's
+    # canonical reset entry point so any new singleton added kit-side
+    # gets reset automatically without a boilerplate-side edit.
+    from resilience_kit.testing.reset import reset_all_singletons
 
     yield
     reset_all_singletons()
