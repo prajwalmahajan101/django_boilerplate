@@ -44,10 +44,10 @@ if not SECRET_KEY:
         "Set it in your .env file or environment."
     )
 
-# Dedicated key for EncryptedCharField (sensitive credentials at rest).
-# Decoupled from SECRET_KEY so that routine SECRET_KEY rotation does not
-# silently corrupt encrypted data. Falls back to SECRET_KEY if not set.
-FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY") or SECRET_KEY
+# Dedicated key for EncryptedCharField now lives under
+# ``RESILIENCE["crypto"]["field_encryption_key"]`` (see below). The kit's
+# ``DjangoSettingsSource`` reads that path; falls back to SECRET_KEY for
+# local/dev when no dedicated key is supplied.
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     # Project apps
     "core",
     "core.api_log",
+    "resilience_kit.adapters.django",
     "accounts",
 ]
 
@@ -458,46 +459,64 @@ LOG_SANITIZATION = {
 }
 
 # --------------------------------------------------------------------------
-# Rate Limiting (used by core.resilience.throttles)
+# Resilience kit (circuit breakers, retries, throttles, SSRF, crypto, audit).
+# Read by resilience_kit.adapters.django.DjangoSettingsSource. Env-prefixed
+# overrides via RESILIENCE_* / RESILIENCE_DEFAULTS__* still win; see
+# docs/configuration.md.
 # --------------------------------------------------------------------------
-RATE_LIMIT_CONFIG = {
-    "FAIL_OPEN": os.getenv("RATE_LIMIT_FAIL_OPEN", "true").lower() == "true",
-    "ENABLE_HEADERS": os.getenv("RATE_LIMIT_ENABLE_HEADERS", "true").lower() == "true",
-    "USER_RATES": {
-        "anon": os.getenv("RATE_LIMIT_ANON", "100/hour"),
-        "user": os.getenv("RATE_LIMIT_USER", "1000/hour"),
-        "admin": os.getenv("RATE_LIMIT_ADMIN", "5000/hour"),
+RESILIENCE = {
+    "backend": os.getenv("RESILIENCE_BACKEND", "redis"),
+    "redis_url": _valkey_rate_limit_url,
+    "redis_key_prefix": os.getenv("CIRCUIT_BREAKER_KEY_PREFIX", "cb"),
+    "fail_open": os.getenv("RATE_LIMIT_FAIL_OPEN", "true").lower() == "true",
+    "defaults": {
+        "circuit_breaker": {
+            "fail_max": _env_int("RESILIENCE_CB_FAIL_MAX", "5"),
+            "reset_timeout": _env_int("RESILIENCE_CB_RESET_TIMEOUT", "30"),
+        },
+        "retry": {
+            "max_attempts": _env_int("RESILIENCE_RETRY_MAX_ATTEMPTS", "3"),
+            "wait_min": _env_int("RESILIENCE_RETRY_WAIT_MIN", "1"),
+            "wait_max": _env_int("RESILIENCE_RETRY_WAIT_MAX", "10"),
+            "retry_on": (
+                "resilience_kit.exceptions.TransientError",
+                "resilience_kit.exceptions.ExternalTimeoutError",
+            ),
+        },
+        "throttle": {
+            "anon_rate": os.getenv("RATE_LIMIT_ANON", "100/hour"),
+            "user_rate": os.getenv("RATE_LIMIT_USER", "1000/hour"),
+            "admin_rate": os.getenv("RATE_LIMIT_ADMIN", "5000/hour"),
+            "burst_rate": os.getenv("RATE_LIMIT_BURST", "10/second"),
+            "global_rate": os.getenv("RATE_LIMIT_GLOBAL", "10000/minute"),
+            "auth_rate": os.getenv("RATE_LIMIT_AUTH", "5/min"),
+        },
     },
-    "BURST_RATE": os.getenv("RATE_LIMIT_BURST", "10/second"),
-    "GLOBAL_RATE": os.getenv("RATE_LIMIT_GLOBAL", "10000/minute"),
-    "ENDPOINT_RATES": {},
-}
-
-# --------------------------------------------------------------------------
-# Circuit Breaker (used by core.resilience.circuit_breaker.provider)
-# --------------------------------------------------------------------------
-CIRCUIT_BREAKER_CONFIG = {
-    "VALKEY_ALIAS": os.getenv("CIRCUIT_BREAKER_VALKEY_ALIAS", "rate_limit"),
-    "KEY_PREFIX": os.getenv("CIRCUIT_BREAKER_KEY_PREFIX", "cb"),
-    "FAIL_OPEN": os.getenv("CIRCUIT_BREAKER_FAIL_OPEN", "true").lower() == "true",
-}
-
-# --------------------------------------------------------------------------
-# Resilience Defaults (used by core.resilience.registry)
-# --------------------------------------------------------------------------
-RESILIENCE_DEFAULTS = {
-    "circuit_breaker": {
-        "fail_max": _env_int("RESILIENCE_CB_FAIL_MAX", "5"),
-        "reset_timeout": _env_int("RESILIENCE_CB_RESET_TIMEOUT", "30"),
+    "ssrf": {
+        "block_private_ips": os.getenv("SSRF_BLOCK_PRIVATE_IPS", "True") == "True",
+        "outbound_allowlist": [
+            h.strip() for h in os.getenv("OUTBOUND_ALLOWLIST", "*").split(",") if h.strip()
+        ],
     },
-    "retry": {
-        "max_attempts": _env_int("RESILIENCE_RETRY_MAX_ATTEMPTS", "3"),
-        "wait_min": _env_int("RESILIENCE_RETRY_WAIT_MIN", "1"),
-        "wait_max": _env_int("RESILIENCE_RETRY_WAIT_MAX", "10"),
-        "retry_on": (
-            "core.exceptions.infrastructure.TransientError",
-            "core.exceptions.infrastructure.ExternalTimeoutError",
-        ),
+    "crypto": {
+        # Decoupled from SECRET_KEY so SECRET_KEY rotation does not corrupt
+        # encrypted data. Falls back to SECRET_KEY for local/dev when no
+        # dedicated key is supplied.
+        "field_encryption_key": os.getenv("FIELD_ENCRYPTION_KEY") or SECRET_KEY,
+    },
+    "audit": {
+        "sink": os.getenv("AUDIT_SINK", "stdlib_logging"),
+        "redact_fields": [
+            f.strip()
+            for f in os.getenv(
+                "AUDIT_REDACT_FIELDS",
+                "password,token,secret,authorization,api_key",
+            ).split(",")
+            if f.strip()
+        ],
+    },
+    "rate_limit_headers": {
+        "enabled": os.getenv("RATE_LIMIT_ENABLE_HEADERS", "true").lower() == "true",
     },
 }
 
