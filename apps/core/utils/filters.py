@@ -19,7 +19,7 @@ class FilterParam:
         coerce: Target type — ``int``, ``bool``, or ``str`` (default).
     """
 
-    __slots__ = ("query_param", "orm_field", "coerce")
+    __slots__ = ("coerce", "orm_field", "query_param")
 
     def __init__(
         self,

@@ -56,8 +56,8 @@ def get_request_id() -> str | None:
 
 
 __all__ = [
-    "request_id_ctx",
-    "set_request_context",
     "clear_request_context",
     "get_request_id",
+    "request_id_ctx",
+    "set_request_context",
 ]

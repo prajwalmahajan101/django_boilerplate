@@ -50,4 +50,4 @@ class GoogleOAuthProvider:
         return None
 
 
-__all__ = ["APIKeyProvider", "JWTProvider", "GoogleOAuthProvider"]
+__all__ = ["APIKeyProvider", "GoogleOAuthProvider", "JWTProvider"]

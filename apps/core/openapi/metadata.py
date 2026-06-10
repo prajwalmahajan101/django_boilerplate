@@ -165,7 +165,6 @@ DEFAULT_RESPONSES: dict = {
 __all__ = [
     "API_DESCRIPTION",
     "DEFAULT_RESPONSES",
-    "ErrorEnvelopeSerializer",
     "RESPONSES_BAD_GATEWAY",
     "RESPONSES_BAD_REQUEST",
     "RESPONSES_FORBIDDEN",
@@ -176,4 +175,5 @@ __all__ = [
     "RESPONSES_UNAUTHORIZED",
     "RESPONSES_VALIDATION",
     "TAGS_METADATA",
+    "ErrorEnvelopeSerializer",
 ]
