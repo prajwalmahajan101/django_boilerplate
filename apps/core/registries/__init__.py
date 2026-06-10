@@ -54,10 +54,10 @@ from resilience_kit import registry as resilience_registry
 register_resilience_service = resilience_registry.register_service
 
 __all__ = [
-    "register_resource",
-    "resource_for",
     "app_resources",
-    "registered_mappings",
     "register_resilience_service",
+    "register_resource",
+    "registered_mappings",
     "resilience_registry",
+    "resource_for",
 ]

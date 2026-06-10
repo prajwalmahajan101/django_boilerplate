@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 
 from django.apps import AppConfig
 
@@ -26,7 +27,7 @@ class CoreConfig(AppConfig):
         """
         from resilience_kit import registry
 
-        try:
+        with contextlib.suppress(ValueError):
             registry.register_service(
                 "s3",
                 {
@@ -39,5 +40,3 @@ class CoreConfig(AppConfig):
                     },
                 },
             )
-        except ValueError:
-            pass

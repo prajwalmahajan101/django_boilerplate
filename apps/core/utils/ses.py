@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import mimetypes
 import uuid
@@ -112,10 +113,8 @@ def _classify_client_error(exc: ClientError) -> Exception:
     ``SESException`` and propagates to the caller without retry.
     """
     code = ""
-    try:
+    with contextlib.suppress(AttributeError):
         code = exc.response.get("Error", {}).get("Code", "")
-    except AttributeError:
-        pass
     if code in _SES_TRANSIENT_ERROR_CODES:
         return TransientError(f"SES transient failure ({code}): {exc}")
     return SESException(f"SES request failed ({code or 'Unknown'}): {exc}")
@@ -276,9 +275,9 @@ def send_email(
 
 # Re-export for callers that catch by type (kept stable).
 __all__ = [
-    "send_email",
     "EmailAttachment",
+    "ExternalTimeoutError",
     "SESException",
     "TransientError",
-    "ExternalTimeoutError",
+    "send_email",
 ]

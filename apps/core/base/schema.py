@@ -42,4 +42,4 @@ class BaseModelSchema(serializers.ModelSerializer):
         return {k: v for k, v in data.items() if v not in (None, "")}
 
 
-__all__ = ["BaseSchema", "BaseModelSchema"]
+__all__ = ["BaseModelSchema", "BaseSchema"]
