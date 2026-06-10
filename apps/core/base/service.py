@@ -22,12 +22,11 @@ from abc import ABC
 from collections import deque
 from typing import Any, Generic, TypeVar
 
+from core.base.audit import apply_audit_fields
+from core.exceptions import EntityNotFoundError
 from django.db import models, transaction
 from django.db.models import QuerySet
 from django.utils import timezone
-
-from core.base.audit import apply_audit_fields
-from core.exceptions import EntityNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -106,9 +105,7 @@ class BaseService(ABC, Generic[ModelType]):
     # Hooks — override in subclasses for business rules
     # ------------------------------------------------------------------
 
-    def pre_create(
-        self, data: dict[str, Any], user: Any | None = None
-    ) -> dict[str, Any]:
+    def pre_create(self, data: dict[str, Any], user: Any | None = None) -> dict[str, Any]:
         return data
 
     def post_create(self, instance: ModelType, user: Any | None = None) -> None:

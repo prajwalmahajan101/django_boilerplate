@@ -14,10 +14,9 @@ Uses the shipped ``APIKey`` model — a ``BaseModel`` descendant whose
 from __future__ import annotations
 
 import pytest
-from django.core.exceptions import ValidationError
-
 from accounts.models import APIKey
 from core.base.service import BaseService
+from django.core.exceptions import ValidationError
 
 
 class APIKeyService(BaseService[APIKey]):

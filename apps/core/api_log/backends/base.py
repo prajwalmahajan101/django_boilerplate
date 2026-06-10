@@ -15,5 +15,4 @@ class ApiLogBackend(Protocol):
 
     backend_name: str
 
-    def persist(self, row: dict) -> None:
-        ...
+    def persist(self, row: dict) -> None: ...

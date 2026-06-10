@@ -23,9 +23,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from resilience_kit.exceptions import ResilienceKitError
-
 from core.context import get_request_id
+from resilience_kit.exceptions import ResilienceKitError
 
 
 def derive_error_code(name: str, *, strip_suffix: bool = True) -> str:

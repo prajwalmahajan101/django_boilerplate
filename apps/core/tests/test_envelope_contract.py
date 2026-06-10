@@ -25,10 +25,9 @@ points us at the bridge or projection layer that needs a tweak.
 from __future__ import annotations
 
 import pytest
-from resilience_kit.testing import verify_envelope_contract
-
 from core.exceptions.handler import api_exception_handler
 from core.responses.envelope_schema import ResponseEnvelope
+from resilience_kit.testing import verify_envelope_contract
 
 
 @pytest.mark.django_db(transaction=False)

@@ -7,14 +7,12 @@ on critical env vars.
 
 import os
 
-from .base import *  # noqa: F401, F403
+from .base import *
 from .base import _env_int  # underscore-prefixed names aren't pulled in by `*`
 
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
-]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 # --------------------------------------------------------------------------
 # Security

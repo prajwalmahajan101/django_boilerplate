@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from core.utils.logging import _request_id_var
 from rest_framework import status
 from rest_framework.response import Response
-
-from core.utils.logging import _request_id_var
 
 
 class BaseResponse(Response):

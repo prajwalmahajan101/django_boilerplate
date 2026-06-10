@@ -2,13 +2,11 @@
 
 import os
 
-from .base import *  # noqa: F401, F403
+from .base import *
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
-    h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()
-]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 # Use console email backend in development
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

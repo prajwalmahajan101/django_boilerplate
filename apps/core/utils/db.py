@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from threading import Lock
 from types import SimpleNamespace
-from typing import Any, Iterator, Sequence
+from typing import Any
 
 from django.conf import settings
 
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # SqlRowSet
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SqlRowSet:
@@ -44,17 +46,14 @@ class SqlRowSet:
     @property
     def objects(self) -> list[SimpleNamespace]:
         """Return rows as a list of SimpleNamespace for attribute access."""
-        return [
-            SimpleNamespace(**dict(zip(self.columns, row)))
-            for row in self.rows
-        ]
+        return [SimpleNamespace(**dict(zip(self.columns, row, strict=False))) for row in self.rows]
 
     @property
     def first(self) -> SimpleNamespace | None:
         """Return the first row as a SimpleNamespace, or None."""
         if not self.rows:
             return None
-        return SimpleNamespace(**dict(zip(self.columns, self.rows[0])))
+        return SimpleNamespace(**dict(zip(self.columns, self.rows[0], strict=False)))
 
     @property
     def scalar(self) -> Any:
@@ -76,6 +75,7 @@ class SqlRowSet:
 # ---------------------------------------------------------------------------
 # URL builder
 # ---------------------------------------------------------------------------
+
 
 def build_url(
     *,
@@ -233,6 +233,7 @@ def ping_engine(engine) -> bool:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _mask_url(url: str) -> str:
     """Replace password in a URL string with ``***``."""

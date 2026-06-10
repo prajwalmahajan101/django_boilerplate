@@ -1,14 +1,13 @@
 """Admin configuration for the accounts app."""
 
+from accounts.models import APIKey, Permission, Role, User
+from core.base.admin import BaseModelAdmin
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
-
-from accounts.models import APIKey, Permission, Role, User
-from core.base.admin import BaseModelAdmin
 
 
 @admin.register(User)
@@ -106,18 +105,24 @@ class APIKeyAdmin(BaseModelAdmin):
 
     fieldsets = (
         (None, {"fields": ("user", "name", "is_active")}),
-        ("Key Info", {
-            "fields": ("prefix", "last_used_at"),
-            "classes": ("collapse",),
-        }),
+        (
+            "Key Info",
+            {
+                "fields": ("prefix", "last_used_at"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
     add_fieldsets = (
-        (None, {
-            "fields": ("user", "name"),
-            "description": "A new API key will be auto-generated. "
-                           "Copy it from the success message — it won't be shown again.",
-        }),
+        (
+            None,
+            {
+                "fields": ("user", "name"),
+                "description": "A new API key will be auto-generated. "
+                "Copy it from the success message — it won't be shown again.",
+            },
+        ),
     )
 
     def get_fieldsets(self, request, obj=None):
@@ -158,21 +163,23 @@ class APIKeyAdmin(BaseModelAdmin):
                 "admin:%s_%s_changelist" % (obj._meta.app_label, obj._meta.model_name),
                 current_app=self.admin_site.name,
             )
-            return HttpResponse(format_html(
-                "<!DOCTYPE html>"
-                "<html><head><title>API Key Created</title></head>"
-                '<body style="font-family: system-ui, sans-serif; max-width: 600px; '
-                'margin: 4em auto; padding: 0 1em;">'
-                "<h1>API Key Created</h1>"
-                "<p><strong>{name}</strong> ({prefix}...)</p>"
-                "<p>Copy this key now &mdash; it will <strong>not</strong> be shown again:</p>"
-                '<pre style="background: #f4f4f4; padding: 1em; font-size: 1.1em; '
-                'border-radius: 4px; user-select: all; overflow-x: auto;">{key}</pre>'
-                '<p><a href="{url}">&larr; Back to API Keys</a></p>'
-                "</body></html>",
-                name=obj.name,
-                prefix=obj.prefix,
-                key=raw_key,
-                url=changelist_url,
-            ))
+            return HttpResponse(
+                format_html(
+                    "<!DOCTYPE html>"
+                    "<html><head><title>API Key Created</title></head>"
+                    '<body style="font-family: system-ui, sans-serif; max-width: 600px; '
+                    'margin: 4em auto; padding: 0 1em;">'
+                    "<h1>API Key Created</h1>"
+                    "<p><strong>{name}</strong> ({prefix}...)</p>"
+                    "<p>Copy this key now &mdash; it will <strong>not</strong> be shown again:</p>"
+                    '<pre style="background: #f4f4f4; padding: 1em; font-size: 1.1em; '
+                    'border-radius: 4px; user-select: all; overflow-x: auto;">{key}</pre>'
+                    '<p><a href="{url}">&larr; Back to API Keys</a></p>'
+                    "</body></html>",
+                    name=obj.name,
+                    prefix=obj.prefix,
+                    key=raw_key,
+                    url=changelist_url,
+                )
+            )
         return super().response_add(request, obj, post_url_continue)

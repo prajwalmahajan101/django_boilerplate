@@ -17,13 +17,12 @@ from __future__ import annotations
 
 import functools
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from core.utils.log_sanitization import sanitize_for_log
 from django.conf import settings
 from django.test.signals import setting_changed
-
-from core.utils.log_sanitization import sanitize_for_log
 
 UNSET: Any = object()
 
@@ -43,7 +42,7 @@ def _sensitive_headers() -> frozenset[str]:
     return frozenset(h.lower() for h in raw)
 
 
-def _bust_sensitive_headers_cache(sender, setting, **kwargs):  # noqa: ANN001
+def _bust_sensitive_headers_cache(sender, setting, **kwargs):
     if setting == "API_LOG_SENSITIVE_HEADERS":
         _sensitive_headers.cache_clear()
 
@@ -54,9 +53,7 @@ setting_changed.connect(_bust_sensitive_headers_cache)
 def redact_headers(headers: dict[str, str]) -> dict[str, str]:
     """Return a copy of ``headers`` with sensitive values replaced."""
     sensitive = _sensitive_headers()
-    return {
-        k: ("[REDACTED]" if k.lower() in sensitive else v) for k, v in headers.items()
-    }
+    return {k: ("[REDACTED]" if k.lower() in sensitive else v) for k, v in headers.items()}
 
 
 def truncate(text: str | None, max_len: int) -> str | None:
@@ -94,8 +91,8 @@ def summarise_body_for_audit(value: Any) -> Any:
     if value is None:
         return None
     try:
-        from django.http import QueryDict
         from django.core.files.uploadedfile import UploadedFile
+        from django.http import QueryDict
     except Exception:
         QueryDict = None  # type: ignore[assignment]
         UploadedFile = None  # type: ignore[assignment]
@@ -213,7 +210,7 @@ def compute_ttl() -> int | None:
     days = int(getattr(settings, "API_LOG_TTL_DAYS", 0) or 0)
     if days <= 0:
         return None
-    return int((datetime.now(timezone.utc) + timedelta(days=days)).timestamp())
+    return int((datetime.now(UTC) + timedelta(days=days)).timestamp())
 
 
 __all__ = [

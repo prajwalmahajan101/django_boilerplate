@@ -9,11 +9,10 @@ Verifies that:
 
 from unittest.mock import patch
 
-from django.db import IntegrityError
-from django.test import TestCase
-
 from accounts.exceptions import APIKeyGenerationError
 from accounts.models import APIKey, User
+from django.db import IntegrityError
+from django.test import TestCase
 
 
 class APIKeyGenerationErrorTest(TestCase):

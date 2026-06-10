@@ -36,7 +36,6 @@ without consulting external docs.
 from __future__ import annotations
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 
@@ -84,9 +83,7 @@ EXCLUDE_PREFIXES = (
 # Path substrings that mark a scanned file as historical-record (e.g.
 # Django migrations preserve the old field names by design — renaming
 # a field is itself encoded as a migration that mentions both names).
-EXCLUDE_SUBSTRINGS = (
-    "/migrations/",
-)
+EXCLUDE_SUBSTRINGS = ("/migrations/",)
 
 
 def load_manifest() -> list[tuple[re.Pattern[str], str]]:
@@ -142,10 +139,7 @@ def main() -> int:
             for compiled, hint in patterns:
                 if compiled.search(line):
                     snippet = line.strip()[:120]
-                    hits.append(
-                        f"{rel}:{lineno}: {snippet}\n"
-                        f"    → {hint}"
-                    )
+                    hits.append(f"{rel}:{lineno}: {snippet}\n" f"    → {hint}")
 
     if hits:
         print("check_stale_refs.py: stale references found:", file=sys.stderr)

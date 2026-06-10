@@ -9,8 +9,6 @@ class AccountsConfig(AppConfig):
         # Register domain exception → HTTP status mappings here so the
         # core handler stays free of domain-app imports (see apps/core/CLAUDE.md
         # boundary rule: "Nothing in core imports from domain apps").
-        from rest_framework import status
-
         from accounts.exceptions import (
             APIKeyGenerationError,
             InvalidTimezoneError,
@@ -19,16 +17,11 @@ class AccountsConfig(AppConfig):
         from core.enums import Resource
         from core.exceptions.handler import register_exception_mapping
         from core.rbac_registry import register_resource
+        from rest_framework import status
 
-        register_exception_mapping(
-            NoFieldsToUpdateError, status.HTTP_400_BAD_REQUEST
-        )
-        register_exception_mapping(
-            InvalidTimezoneError, status.HTTP_400_BAD_REQUEST
-        )
-        register_exception_mapping(
-            APIKeyGenerationError, status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        register_exception_mapping(NoFieldsToUpdateError, status.HTTP_400_BAD_REQUEST)
+        register_exception_mapping(InvalidTimezoneError, status.HTTP_400_BAD_REQUEST)
+        register_exception_mapping(APIKeyGenerationError, status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # RBAC: this used to be RBACBackend.MODEL_RESOURCE_MAP, a hardcoded  # stale-refs: allow
         # dict in apps/accounts/backends.py. Moving the registration here

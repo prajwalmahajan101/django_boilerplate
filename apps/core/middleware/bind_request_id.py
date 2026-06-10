@@ -22,12 +22,11 @@ the bridge mirrors it.
 
 from __future__ import annotations
 
-from typing import Callable
-
-from django.http import HttpRequest, HttpResponse
-from resilience_kit.context import bind_to
+from collections.abc import Callable
 
 from core.context import request_id_ctx
+from django.http import HttpRequest, HttpResponse
+from resilience_kit.context import bind_to
 
 
 class BindRequestIdMiddleware:

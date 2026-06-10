@@ -64,8 +64,17 @@ _MUTABLE_CALL_NAMES = {"dict", "set", "list"}
 _LOCK_CALL_LEAVES = {"Lock", "RLock", "local"}
 _WAIVER_TAG = "thread-safety:"
 _MUTATING_METHODS = {
-    "append", "extend", "insert", "remove", "pop", "clear",
-    "add", "discard", "update", "setdefault", "popitem",
+    "append",
+    "extend",
+    "insert",
+    "remove",
+    "pop",
+    "clear",
+    "add",
+    "discard",
+    "update",
+    "setdefault",
+    "popitem",
 }
 
 

@@ -32,10 +32,9 @@ from __future__ import annotations
 
 from typing import Any, Generic, TypeVar
 
+from core.base.audit import apply_audit_fields
 from django.db import models, transaction
 from django.db.models import QuerySet
-
-from core.base.audit import apply_audit_fields
 
 ModelType = TypeVar("ModelType", bound=models.Model)
 

@@ -1,8 +1,5 @@
 """OpenAPI schemas for the Google OAuth / JWT token-refresh / logout endpoints."""
 
-from drf_spectacular.utils import OpenApiExample, OpenApiResponse, inline_serializer
-from rest_framework import serializers
-
 from accounts.api_schemas._common import (
     _auth_required_schema,
     _error_response_schema,
@@ -12,6 +9,8 @@ from accounts.api_schemas._common import (
 )
 from accounts.serializers import GoogleCallbackSerializer
 from core.api_schemas import throttle_response
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, inline_serializer
+from rest_framework import serializers
 
 # ---------------------------------------------------------------------------
 # POST /api/accounts/auth/google/

@@ -12,11 +12,10 @@ from __future__ import annotations
 import logging
 import threading
 
-from django.conf import settings
-
 from core.api_log.backends import NoopApiLogBackend, OrmApiLogBackend
 from core.api_log.backends.base import ApiLogBackend
 from core.dispatch.fire_and_forget import FireAndForgetQueue, get_queue
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +51,7 @@ def _ensure_queue() -> FireAndForgetQueue:
     except KeyError:
         return FireAndForgetQueue(
             _QUEUE_NAME,
-            max_in_flight=int(
-                getattr(settings, "API_LOG_QUEUE_MAX_IN_FLIGHT", 1000)
-            ),
+            max_in_flight=int(getattr(settings, "API_LOG_QUEUE_MAX_IN_FLIGHT", 1000)),
             max_workers=int(getattr(settings, "API_LOG_QUEUE_WORKERS", 4)),
         )
 

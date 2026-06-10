@@ -18,11 +18,9 @@ from email import message_from_string
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError, EndpointConnectionError
-from django.test import TestCase, override_settings
-
 from core.exceptions.infrastructure import SESException, TransientError
 from core.utils.ses import send_email
-
+from django.test import TestCase, override_settings
 
 _SES_SETTINGS = dict(
     SES_SENDER_EMAIL="ops@example.com",

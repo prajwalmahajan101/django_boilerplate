@@ -38,33 +38,37 @@ logger = logging.getLogger(__name__)
 
 # Allow-list. Add a key here ONLY if it has a documented, bounded value
 # space. The plan's cardinality contract is the source of truth.
-_BOUNDED_LABEL_KEYS: frozenset[str] = frozenset({
-    "event",
-    "subsystem",
-    "status",
-    "partner_slug",
-    "outcome",
-})
+_BOUNDED_LABEL_KEYS: frozenset[str] = frozenset(
+    {
+        "event",
+        "subsystem",
+        "status",
+        "partner_slug",
+        "outcome",
+    }
+)
 
 # Hard rejection list. These are the obvious unbounded identifiers a future
 # contributor might reach for; rejecting them by name (instead of relying on
 # the allow-list alone) yields a clearer error message at the call site.
-_FORBIDDEN_LABEL_KEYS: frozenset[str] = frozenset({
-    "request_id",
-    "app_number",
-    "query_id",
-    "partner_id",
-    "user_id",
-    "remark_id",
-    "outbox_id",
-    "url",
-    "error",
-    "error_message",
-    "email",
-    "phone",
-    "pan",
-    "aadhaar",
-})
+_FORBIDDEN_LABEL_KEYS: frozenset[str] = frozenset(
+    {
+        "request_id",
+        "app_number",
+        "query_id",
+        "partner_id",
+        "user_id",
+        "remark_id",
+        "outbox_id",
+        "url",
+        "error",
+        "error_message",
+        "email",
+        "phone",
+        "pan",
+        "aadhaar",
+    }
+)
 
 
 class CardinalityViolation(ValueError):

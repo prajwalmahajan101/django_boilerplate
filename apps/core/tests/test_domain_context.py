@@ -11,14 +11,13 @@ from __future__ import annotations
 
 import logging
 
-from django.test import SimpleTestCase
-
 from core.utils.logging import (
     RequestContextFilter,
     clear_request_context,
     domain_context,
     set_request_context,
 )
+from django.test import SimpleTestCase
 
 
 class DomainContextPropagationTests(SimpleTestCase):

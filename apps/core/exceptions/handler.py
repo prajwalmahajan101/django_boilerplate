@@ -116,14 +116,14 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
     # from_exception returns (body, status, headers); body is already
     # envelope-shaped because we pass our pydantic ResponseEnvelope as
     # envelope_cls. Closes M7 B2 (two envelope shapes on the same app).
+    from core.responses.envelope_schema import ResponseEnvelope
     from resilience_kit.adapters._envelope import from_exception
     from resilience_kit.exceptions import ResilienceKitError
 
-    from core.responses.envelope_schema import ResponseEnvelope
-
     if isinstance(exc, ResilienceKitError):
         body, status_code, headers = from_exception(
-            exc, envelope_cls=ResponseEnvelope,
+            exc,
+            envelope_cls=ResponseEnvelope,
         )
         # The kit fills request_id=None because it doesn't read our
         # ContextVar. Patch it in from the request scope so the envelope

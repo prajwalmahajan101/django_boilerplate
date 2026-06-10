@@ -35,9 +35,7 @@ class CoreConfig(AppConfig):
                         "reset_timeout": 30,
                         # S3NotFoundError is a boilerplate-domain subclass
                         # (S3-cache-miss is expected, not an outage).
-                        "excluded_exceptions": (
-                            "core.exceptions.infrastructure.S3NotFoundError",
-                        ),
+                        "excluded_exceptions": ("core.exceptions.infrastructure.S3NotFoundError",),
                     },
                 },
             )

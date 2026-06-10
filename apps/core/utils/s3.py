@@ -6,19 +6,19 @@ import json
 import logging
 import re
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
-from typing import Any, BinaryIO, Iterator
+from datetime import UTC, datetime
+from typing import Any, BinaryIO
 from urllib.parse import urlparse
 
 from botocore.exceptions import BotoCoreError, ClientError
-from django.conf import settings
-
 from core.exceptions.infrastructure import S3Exception, S3NotFoundError
 from core.exceptions.repository import InvalidInputError
-from resilience_kit import resilient
 from core.utils.aws import get_aws_client
 from core.utils.log_sanitization import safe_log_dict
+from django.conf import settings
+from resilience_kit import resilient
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ def generate_object_key(prefix: str, filename: str, *, ext: str | None = None) -
     cleaned = _FILENAME_SANITIZE_RE.sub("-", base).strip("-._") or "file"
     if ext and not cleaned.lower().endswith(f".{ext.lower().lstrip('.')}"):
         cleaned = f"{cleaned}.{ext.lstrip('.')}"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     folder = prefix.strip("/") or "assets"
     return f"{folder}/{now:%Y/%m}/{uuid.uuid4()}__{cleaned}"
 

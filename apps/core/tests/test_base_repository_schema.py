@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from django.core.exceptions import ValidationError
-from django.test import TestCase
-from rest_framework import serializers
-
 from accounts.models import APIKey
 from core.base.repository import BaseRepository
 from core.base.schema import BaseSchema
+from django.core.exceptions import ValidationError
+from django.test import TestCase
+from rest_framework import serializers
 
 
 class UserRepository(BaseRepository):

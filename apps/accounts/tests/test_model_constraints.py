@@ -12,10 +12,9 @@ hits the DB and the CHECK fires without needing ``skip_validation``.
 
 from __future__ import annotations
 
+from accounts.models import Permission
 from django.db import IntegrityError, transaction
 from django.test import TestCase
-
-from accounts.models import Permission
 
 
 class PermissionEnumConstraintTests(TestCase):
@@ -34,8 +33,6 @@ class PermissionEnumConstraintTests(TestCase):
         # ``get_or_create`` so the test passes whether seed migrations
         # already created the row or not. The point is to confirm the
         # CHECK constraints don't reject valid enum values.
-        permission, _ = Permission.objects.get_or_create(
-            resource="account", action="read"
-        )
+        permission, _ = Permission.objects.get_or_create(resource="account", action="read")
         self.assertEqual(permission.resource, "account")
         self.assertEqual(permission.action, "read")

@@ -9,9 +9,8 @@ per-class fall-through semantics.
 
 from __future__ import annotations
 
-from rest_framework.authentication import BaseAuthentication
-
 from core.auth.registry import enabled_providers
+from rest_framework.authentication import BaseAuthentication
 
 
 class CompositeAuthentication(BaseAuthentication):

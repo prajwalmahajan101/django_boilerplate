@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from rest_framework import status
-
 from core.base.response import BaseResponse
+from rest_framework import status
 
 
 class SuccessResponse[T](BaseResponse):
