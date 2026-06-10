@@ -226,9 +226,12 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "core.exceptions.handler.api_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": [
-        "core.resilience.throttles.UserTierThrottle",
-        "core.resilience.throttles.BurstThrottle",
-        "core.resilience.throttles.GlobalThrottle",
+        "resilience_kit.adapters.django.drf_throttles.UserTierThrottle",
+        "resilience_kit.adapters.django.drf_throttles.BurstThrottle",
+        # NOTE: the kit does not yet ship a process-wide ``GlobalThrottle``
+        # (see kit M7 follow-up). The boilerplate's 10 000/min global cap
+        # is therefore dropped pending an upstream addition; nginx
+        # ``limit_req`` continues to provide the system-wide ceiling.
     ],
     "DEFAULT_THROTTLE_RATES": {
         # `auth_burst` scope is used by AuthEndpointThrottle (5/min anon).
