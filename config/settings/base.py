@@ -11,6 +11,21 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from kombu import Queue
+from resilience_kit.runtime import legacy_env_alias
+
+# Translate legacy operator env vars (RATE_LIMIT_*, CIRCUIT_BREAKER_*,
+# FIELD_ENCRYPTION_KEY, REDIS_URL, OUTBOUND_ALLOWLIST, AUDIT_SINK, …)
+# into the kit's ``RESILIENCE_*`` shape. Must run BEFORE any
+# pydantic-settings instantiation — the kit's ``ResilienceConfig.ready()``
+# reads env at AppConfig boot.
+#
+# Each legacy var that's set emits a ``DeprecationWarning`` (warn=True
+# default) so operators see the rename signal on the first deploy. Do
+# NOT pass ``warn=False`` here — the signal IS the migration aid.
+# Short-lived CI jobs that want to silence the noise can do so locally.
+# The kit-prefixed name always wins on collision, so a partially-renamed
+# env file stays self-consistent.
+legacy_env_alias()
 
 
 def _env_int(name: str, default: str) -> int:
