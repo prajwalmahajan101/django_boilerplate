@@ -21,15 +21,16 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from core.enums import Action, Resource
 from core.middleware.throttling import AuthEndpointThrottle
 from core.permissions import HasResourcePermission
-from core.resilience.throttles import BurstThrottle, GlobalThrottle, ValkeyRateThrottle
 from core.responses import ErrorResponse, SuccessResponse
 from dj_rest_auth.registration.views import SocialLoginView
 from drf_spectacular.utils import extend_schema
+from resilience_kit.adapters.django.drf_throttles import BurstThrottle
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -37,22 +38,17 @@ from rest_framework_simplejwt.tokens import RefreshToken
 logger = logging.getLogger(__name__)
 
 
-class AuthThrottle(ValkeyRateThrottle):
-    """Rate limiter for auth endpoints: 20 requests/hour per IP."""
+class AuthThrottle(AnonRateThrottle):
+    """Sustained auth-endpoint rate limit: 20 requests/hour per IP.
+
+    Complements ``AuthEndpointThrottle`` (5/min burst). The 20/hour rate
+    is published under ``DEFAULT_THROTTLE_RATES["auth"]`` so DRF's
+    ``AnonRateThrottle.get_rate`` picks it up via the ``auth`` scope.
+    Sustained brute-force protection; the burst throttle handles the
+    fast-cycling credential-stuffing pattern.
+    """
 
     scope = "auth"
-
-    def get_rate(self) -> str:
-        from django.conf import settings
-
-        rate_config = getattr(settings, "RATE_LIMIT_CONFIG", {})
-        return rate_config.get("AUTH_RATE", "20/hour")
-
-    def get_cache_key(self, request, view) -> str:
-        return self.cache_format % {
-            "scope": self.scope,
-            "ident": self.get_ident(request),
-        }
 
 
 # AuthEndpointThrottle (imported above) is a DRF-level burst throttle.
@@ -75,7 +71,7 @@ class GoogleLogin(SocialLoginView):
     # inherit any authentication classes from DRF defaults.
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [BurstThrottle, AuthThrottle, AuthEndpointThrottle, GlobalThrottle]
+    throttle_classes = [BurstThrottle, AuthThrottle, AuthEndpointThrottle]
 
     def get_response(self):
         """Include refresh token in JSON body even when JWT_AUTH_HTTPONLY is True.
@@ -106,7 +102,7 @@ class GoogleLogin(SocialLoginView):
 @extend_schema(**token_refresh_schema)
 @api_view(["POST"])
 @permission_classes([AllowAny])
-@throttle_classes([BurstThrottle, AuthThrottle, AuthEndpointThrottle, GlobalThrottle])
+@throttle_classes([BurstThrottle, AuthThrottle, AuthEndpointThrottle])
 def token_refresh(request: Request) -> Response:
     """Refresh JWT access token.
 
@@ -162,7 +158,7 @@ def token_refresh(request: Request) -> Response:
 @extend_schema(**logout_schema)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-@throttle_classes([BurstThrottle, AuthThrottle, AuthEndpointThrottle, GlobalThrottle])
+@throttle_classes([BurstThrottle, AuthThrottle, AuthEndpointThrottle])
 def logout(request: Request) -> Response:
     """Blacklist refresh token to log out.
 
@@ -200,7 +196,7 @@ def logout(request: Request) -> Response:
 @extend_schema(methods=["PATCH"], **me_patch_schema)
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
-@throttle_classes([BurstThrottle, AuthThrottle, AuthEndpointThrottle, GlobalThrottle])
+@throttle_classes([BurstThrottle, AuthThrottle, AuthEndpointThrottle])
 def me(request: Request) -> Response:
     """Get or update current user profile.
 

@@ -1,4 +1,22 @@
-"""Base exception for all custom application exceptions."""
+"""Base exception for all custom application exceptions.
+
+Inherits from :class:`resilience_kit.exceptions.ResilienceKitError` so
+every boilerplate domain exception is *also* a kit exception. This is
+the M7 bridge — it lets:
+
+* the kit's ``exception_handler.handle`` recognise our exceptions
+  (we still wrap them via the composition wrapper in ``handler.py``);
+* the kit's ``@retry`` / ``@resilient`` policies match on our subclasses
+  of ``TransientError`` / ``ExternalTimeoutError`` without the boilerplate
+  having to translate at every raise site;
+* downstream services depending on the kit see one exception hierarchy
+  instead of two parallel trees.
+
+The single point of bridging keeps domain subclasses (``S3Exception``,
+``SESException``, ``PartnerPushError``, ``OutboundURLNotAllowedError``)
+unchanged — they still descend through ``BaseCustomError`` and pick up
+the kit ancestry for free.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +24,7 @@ import re
 from typing import Any
 
 from core.context import get_request_id
+from resilience_kit.exceptions import ResilienceKitError
 
 
 def derive_error_code(name: str, *, strip_suffix: bool = True) -> str:
@@ -21,7 +40,7 @@ def derive_error_code(name: str, *, strip_suffix: bool = True) -> str:
     return re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name).upper()
 
 
-class BaseCustomError(Exception):
+class BaseCustomError(ResilienceKitError):
     """Root of all custom application exceptions.
 
     Every project-specific exception inherits from this class so the DRF
@@ -56,6 +75,13 @@ class BaseCustomError(Exception):
 
     default_message: str = "An unexpected error occurred."
     error_code: str | None = None
+    # Free the ``details`` and ``message`` names so subclasses can set
+    # them as plain attributes. ``ResilienceKitError`` declares
+    # ``details`` as a read-only ``@property`` backed by ``_details``;
+    # shadowing it at the class level lets ``ValidationError`` (and any
+    # future subclass) keep its existing ``self.details = ...`` pattern
+    # without colliding with the kit's descriptor.
+    details: Any = None
 
     def __init__(self, message: str | None = None, *, status_code: int | None = None):
         self.message = message or self.default_message

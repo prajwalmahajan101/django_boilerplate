@@ -11,6 +11,21 @@ from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
 from kombu import Queue
+from resilience_kit.runtime import legacy_env_alias
+
+# Translate legacy operator env vars (RATE_LIMIT_*, CIRCUIT_BREAKER_*,
+# FIELD_ENCRYPTION_KEY, REDIS_URL, OUTBOUND_ALLOWLIST, AUDIT_SINK, …)
+# into the kit's ``RESILIENCE_*`` shape. Must run BEFORE any
+# pydantic-settings instantiation — the kit's ``ResilienceConfig.ready()``
+# reads env at AppConfig boot.
+#
+# Each legacy var that's set emits a ``DeprecationWarning`` (warn=True
+# default) so operators see the rename signal on the first deploy. Do
+# NOT pass ``warn=False`` here — the signal IS the migration aid.
+# Short-lived CI jobs that want to silence the noise can do so locally.
+# The kit-prefixed name always wins on collision, so a partially-renamed
+# env file stays self-consistent.
+legacy_env_alias()
 
 
 def _env_int(name: str, default: str) -> int:
@@ -44,10 +59,10 @@ if not SECRET_KEY:
         "Set it in your .env file or environment."
     )
 
-# Dedicated key for EncryptedCharField (sensitive credentials at rest).
-# Decoupled from SECRET_KEY so that routine SECRET_KEY rotation does not
-# silently corrupt encrypted data. Falls back to SECRET_KEY if not set.
-FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY") or SECRET_KEY
+# Dedicated key for EncryptedCharField now lives under
+# ``RESILIENCE["crypto"]["field_encryption_key"]`` (see below). The kit's
+# ``DjangoSettingsSource`` reads that path; falls back to SECRET_KEY for
+# local/dev when no dedicated key is supplied.
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
@@ -90,6 +105,7 @@ INSTALLED_APPS = [
     # Project apps
     "core",
     "core.api_log",
+    "resilience_kit.adapters.django",
     "accounts",
 ]
 
@@ -99,11 +115,17 @@ SITE_ID = 1
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "core.middleware.selective_cors.SelectiveCORSMiddleware",
-    "core.middleware.security_headers.SecurityHeadersMiddleware",
-    "core.middleware.body_limit.ContentLengthLimitMiddleware",
-    "core.middleware.request_id.RequestIDMiddleware",
-    "core.middleware.exception_logging.ExceptionLoggingMiddleware",
+    # Kit-owned outer shell: CORS, hardening headers, body-size cap,
+    # request-id stamping, and the catch-all exception logger.
+    "resilience_kit.adapters.django.middleware.SelectiveCorsMiddleware",
+    "resilience_kit.adapters.django.middleware.SecurityHeadersMiddleware",
+    "resilience_kit.adapters.django.middleware.BodyLimitMiddleware",
+    "resilience_kit.adapters.django.middleware.RequestIdMiddleware",
+    # Mirror the kit's request_id into core.context.request_id_ctx so
+    # BaseCustomError, RequestContextFilter, and the envelope handler
+    # see a non-null value. Must sit AFTER RequestIdMiddleware.
+    "core.middleware.bind_request_id.BindRequestIdMiddleware",
+    "resilience_kit.adapters.django.middleware.ExceptionLoggingMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -111,8 +133,11 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Boilerplate-specific: structured request logging + envelope-aware
+    # rate-limit header injection (the kit emits headers via the throttle
+    # path; this one decorates 2xx responses too).
     "core.middleware.request_logging.RequestLoggingMiddleware",
-    "core.middleware.rate_limit_headers.RateLimitHeadersMiddleware",
+    "resilience_kit.adapters.django.middleware.RateLimitHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -220,16 +245,21 @@ REST_FRAMEWORK = {
     ],
     "EXCEPTION_HANDLER": "core.exceptions.handler.api_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": [
-        "core.resilience.throttles.UserTierThrottle",
-        "core.resilience.throttles.BurstThrottle",
-        "core.resilience.throttles.GlobalThrottle",
+        "resilience_kit.adapters.django.drf_throttles.UserTierThrottle",
+        "resilience_kit.adapters.django.drf_throttles.BurstThrottle",
+        # NOTE: the kit does not yet ship a process-wide ``GlobalThrottle``
+        # (see kit M7 follow-up). The boilerplate's 10 000/min global cap
+        # is therefore dropped pending an upstream addition; nginx
+        # ``limit_req`` continues to provide the system-wide ceiling.
     ],
     "DEFAULT_THROTTLE_RATES": {
-        # `auth_burst` scope is used by AuthEndpointThrottle (5/min anon).
-        # Distinct from the existing `auth` scope (20/hour) — the two are
-        # complementary: `auth` catches sustained brute force, `auth_burst`
-        # catches a fast credential-stuffing burst.
-        "auth_burst": "5/min",
+        # `auth` (sustained 20/hour anon-IP) — consumed by the local
+        # ``accounts.views.AuthThrottle``. ``auth_burst`` (5/min anon-IP)
+        # — consumed by ``core.middleware.throttling.AuthEndpointThrottle``.
+        # The two are complementary: ``auth`` catches sustained brute
+        # force, ``auth_burst`` catches a fast credential-stuffing burst.
+        "auth": os.getenv("RATE_LIMIT_AUTH", "20/hour"),
+        "auth_burst": os.getenv("RATE_LIMIT_AUTH_BURST", "5/min"),
     },
     # Number of trusted proxy hops in front of the app. DRF's
     # ``BaseThrottle.get_ident`` reads this to decide how many entries
@@ -458,46 +488,64 @@ LOG_SANITIZATION = {
 }
 
 # --------------------------------------------------------------------------
-# Rate Limiting (used by core.resilience.throttles)
+# Resilience kit (circuit breakers, retries, throttles, SSRF, crypto, audit).
+# Read by resilience_kit.adapters.django.DjangoSettingsSource. Env-prefixed
+# overrides via RESILIENCE_* / RESILIENCE_DEFAULTS__* still win; see
+# docs/configuration.md.
 # --------------------------------------------------------------------------
-RATE_LIMIT_CONFIG = {
-    "FAIL_OPEN": os.getenv("RATE_LIMIT_FAIL_OPEN", "true").lower() == "true",
-    "ENABLE_HEADERS": os.getenv("RATE_LIMIT_ENABLE_HEADERS", "true").lower() == "true",
-    "USER_RATES": {
-        "anon": os.getenv("RATE_LIMIT_ANON", "100/hour"),
-        "user": os.getenv("RATE_LIMIT_USER", "1000/hour"),
-        "admin": os.getenv("RATE_LIMIT_ADMIN", "5000/hour"),
+RESILIENCE = {
+    "backend": os.getenv("RESILIENCE_BACKEND", "redis"),
+    "redis_url": _valkey_rate_limit_url,
+    "redis_key_prefix": os.getenv("CIRCUIT_BREAKER_KEY_PREFIX", "cb"),
+    "fail_open": os.getenv("RATE_LIMIT_FAIL_OPEN", "true").lower() == "true",
+    "defaults": {
+        "circuit_breaker": {
+            "fail_max": _env_int("RESILIENCE_CB_FAIL_MAX", "5"),
+            "reset_timeout": _env_int("RESILIENCE_CB_RESET_TIMEOUT", "30"),
+        },
+        "retry": {
+            "max_attempts": _env_int("RESILIENCE_RETRY_MAX_ATTEMPTS", "3"),
+            "wait_min": _env_int("RESILIENCE_RETRY_WAIT_MIN", "1"),
+            "wait_max": _env_int("RESILIENCE_RETRY_WAIT_MAX", "10"),
+            "retry_on": (
+                "resilience_kit.exceptions.TransientError",
+                "resilience_kit.exceptions.ExternalTimeoutError",
+            ),
+        },
+        "throttle": {
+            "anon_rate": os.getenv("RATE_LIMIT_ANON", "100/hour"),
+            "user_rate": os.getenv("RATE_LIMIT_USER", "1000/hour"),
+            "admin_rate": os.getenv("RATE_LIMIT_ADMIN", "5000/hour"),
+            "burst_rate": os.getenv("RATE_LIMIT_BURST", "10/second"),
+            "global_rate": os.getenv("RATE_LIMIT_GLOBAL", "10000/minute"),
+            "auth_rate": os.getenv("RATE_LIMIT_AUTH", "5/min"),
+        },
     },
-    "BURST_RATE": os.getenv("RATE_LIMIT_BURST", "10/second"),
-    "GLOBAL_RATE": os.getenv("RATE_LIMIT_GLOBAL", "10000/minute"),
-    "ENDPOINT_RATES": {},
-}
-
-# --------------------------------------------------------------------------
-# Circuit Breaker (used by core.resilience.circuit_breaker.provider)
-# --------------------------------------------------------------------------
-CIRCUIT_BREAKER_CONFIG = {
-    "VALKEY_ALIAS": os.getenv("CIRCUIT_BREAKER_VALKEY_ALIAS", "rate_limit"),
-    "KEY_PREFIX": os.getenv("CIRCUIT_BREAKER_KEY_PREFIX", "cb"),
-    "FAIL_OPEN": os.getenv("CIRCUIT_BREAKER_FAIL_OPEN", "true").lower() == "true",
-}
-
-# --------------------------------------------------------------------------
-# Resilience Defaults (used by core.resilience.registry)
-# --------------------------------------------------------------------------
-RESILIENCE_DEFAULTS = {
-    "circuit_breaker": {
-        "fail_max": _env_int("RESILIENCE_CB_FAIL_MAX", "5"),
-        "reset_timeout": _env_int("RESILIENCE_CB_RESET_TIMEOUT", "30"),
+    "ssrf": {
+        "block_private_ips": os.getenv("SSRF_BLOCK_PRIVATE_IPS", "True") == "True",
+        "outbound_allowlist": [
+            h.strip() for h in os.getenv("OUTBOUND_ALLOWLIST", "*").split(",") if h.strip()
+        ],
     },
-    "retry": {
-        "max_attempts": _env_int("RESILIENCE_RETRY_MAX_ATTEMPTS", "3"),
-        "wait_min": _env_int("RESILIENCE_RETRY_WAIT_MIN", "1"),
-        "wait_max": _env_int("RESILIENCE_RETRY_WAIT_MAX", "10"),
-        "retry_on": (
-            "core.exceptions.infrastructure.TransientError",
-            "core.exceptions.infrastructure.ExternalTimeoutError",
-        ),
+    "crypto": {
+        # Decoupled from SECRET_KEY so SECRET_KEY rotation does not corrupt
+        # encrypted data. Falls back to SECRET_KEY for local/dev when no
+        # dedicated key is supplied.
+        "field_encryption_key": os.getenv("FIELD_ENCRYPTION_KEY") or SECRET_KEY,
+    },
+    "audit": {
+        "sink": os.getenv("AUDIT_SINK", "stdlib_logging"),
+        "redact_fields": [
+            f.strip()
+            for f in os.getenv(
+                "AUDIT_REDACT_FIELDS",
+                "password,token,secret,authorization,api_key",
+            ).split(",")
+            if f.strip()
+        ],
+    },
+    "rate_limit_headers": {
+        "enabled": os.getenv("RATE_LIMIT_ENABLE_HEADERS", "true").lower() == "true",
     },
 }
 

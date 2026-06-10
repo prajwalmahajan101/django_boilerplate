@@ -9,9 +9,9 @@ endpoint; this test pins that contract on csp_report.
 
 from __future__ import annotations
 
-from core.resilience.throttles import BurstThrottle
 from core.views import csp_report
 from django.test import SimpleTestCase
+from resilience_kit.adapters.django.drf_throttles import BurstThrottle
 
 
 class CSPReportThrottleContractTests(SimpleTestCase):

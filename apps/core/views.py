@@ -12,10 +12,10 @@ from core.lifecycle.healthcheck import (
     db_check,
     run_checks,
 )
-from core.resilience.throttles import BurstThrottle
 from django.conf import settings
 from django.http import HttpResponse
 from django.views.decorators.cache import never_cache
+from resilience_kit.adapters.django.drf_throttles import BurstThrottle
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request

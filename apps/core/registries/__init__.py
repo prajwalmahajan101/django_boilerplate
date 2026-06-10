@@ -46,7 +46,7 @@ from core.rbac_registry import (
     registered_mappings,
     resource_for,
 )
-from core.resilience.registry import registry as resilience_registry
+from resilience_kit import registry as resilience_registry
 
 # Bound-method handle to match the verb/shape of ``register_resource``.
 # Re-exported as a free function so callers don't import the singleton

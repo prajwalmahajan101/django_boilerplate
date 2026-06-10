@@ -41,14 +41,11 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.integration)
         elif "/tests/e2e/" in path:
             item.add_marker(pytest.mark.e2e)
-        elif (
-            "/apps/" in path
-            and "/tests/" in path
-            and not any(m.name in {"unit", "integration", "e2e"} for m in item.iter_markers())
-        ):
+        elif "/apps/" in path and "/tests/" in path:
             # App-co-located tests default to unit unless the test
             # explicitly opts into another layer.
-            item.add_marker(pytest.mark.unit)
+            if not any(m.name in {"unit", "integration", "e2e"} for m in item.iter_markers()):
+                item.add_marker(pytest.mark.unit)
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +121,11 @@ def _clear_caches():
     state between test cases on the same process. Single source of
     truth lives in ``core.testing.reset_all_singletons``.
     """
-    from core.testing import reset_all_singletons
+    # Kit-owned singletons (registry, breakers, throttle buckets, audit
+    # dispatcher, settings cache, recovery state) reset via the kit's
+    # canonical reset entry point so any new singleton added kit-side
+    # gets reset automatically without a boilerplate-side edit.
+    from resilience_kit.testing.reset import reset_all_singletons
 
     yield
     reset_all_singletons()

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import mimetypes
 import uuid
@@ -21,11 +20,11 @@ from core.exceptions.infrastructure import (
     SESException,
     TransientError,
 )
-from core.resilience.decorators import resilient
 from core.utils.aws import get_aws_client
 from core.utils.log_sanitization import safe_log_dict
 from core.utils.logging import log_duration
 from django.conf import settings
+from resilience_kit import resilient
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +112,10 @@ def _classify_client_error(exc: ClientError) -> Exception:
     ``SESException`` and propagates to the caller without retry.
     """
     code = ""
-    with contextlib.suppress(AttributeError):
+    try:
         code = exc.response.get("Error", {}).get("Code", "")
+    except AttributeError:
+        pass
     if code in _SES_TRANSIENT_ERROR_CODES:
         return TransientError(f"SES transient failure ({code}): {exc}")
     return SESException(f"SES request failed ({code or 'Unknown'}): {exc}")

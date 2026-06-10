@@ -15,10 +15,10 @@ from urllib.parse import urlparse
 from botocore.exceptions import BotoCoreError, ClientError
 from core.exceptions.infrastructure import S3Exception, S3NotFoundError
 from core.exceptions.repository import InvalidInputError
-from core.resilience.decorators import resilient
 from core.utils.aws import get_aws_client
 from core.utils.log_sanitization import safe_log_dict
 from django.conf import settings
+from resilience_kit import resilient
 
 logger = logging.getLogger(__name__)
 

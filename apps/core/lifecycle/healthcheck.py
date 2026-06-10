@@ -108,7 +108,7 @@ def cache_check(alias: str = "default") -> HealthCheckResult:
                 name=f"cache[{alias}]", healthy=False, detail="round-trip failed"
             )
         try:
-            from core.resilience.recovery import attempt_recover_all
+            from resilience_kit.recovery import attempt_recover_all
 
             recovered = attempt_recover_all()
             detail = f"connected (recovered={recovered})" if recovered else "connected"

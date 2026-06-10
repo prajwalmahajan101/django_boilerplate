@@ -1,5 +1,4 @@
 import atexit
-import contextlib
 
 from django.apps import AppConfig
 
@@ -14,7 +13,6 @@ class CoreConfig(AppConfig):
         atexit.register(dispose_all_engines)
 
         self._register_resilience_services()
-        self._start_recovery_monitor()
 
     def _register_resilience_services(self) -> None:
         """Register one entry per outbound integration so the
@@ -26,34 +24,20 @@ class CoreConfig(AppConfig):
         trip the breaker — only genuine outages (timeouts, 5xx,
         connection errors) count.
         """
-        from core.resilience.registry import registry
+        from resilience_kit import registry
 
-        with contextlib.suppress(ValueError):
+        try:
             registry.register_service(
                 "s3",
                 {
                     "circuit_breaker": {
                         "fail_max": 5,
                         "reset_timeout": 30,
+                        # S3NotFoundError is a boilerplate-domain subclass
+                        # (S3-cache-miss is expected, not an outage).
                         "excluded_exceptions": ("core.exceptions.infrastructure.S3NotFoundError",),
                     },
                 },
             )
-
-    def _start_recovery_monitor(self) -> None:
-        """Single recovery monitor thread per process.
-
-        Guarded by an idempotent ``start()`` so autoreload / repeated
-        ready() / test fixtures don't accumulate threads.
-        """
-        try:
-            from core.resilience.recovery import monitor
-
-            monitor.start()
-            atexit.register(monitor.stop)
-        except Exception:
-            import logging
-
-            logging.getLogger(__name__).exception(
-                "failed to start ValkeyRecoveryMonitor — recovery disabled"
-            )
+        except ValueError:
+            pass

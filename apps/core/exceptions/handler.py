@@ -70,7 +70,19 @@ def _get_status_map() -> tuple[tuple[type[BaseCustomError], int], ...]:
 
 
 def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
-    """Reshape DRF exceptions into the standard envelope."""
+    """Reshape DRF exceptions into the standard envelope.
+
+    Composition with the resilience kit handler:
+    every ``BaseCustomError`` is *also* a ``ResilienceKitError`` (bridged
+    in ``core.base.exception``). The kit's
+    ``resilience_kit.adapters.django.exception_handler.handle`` would
+    catch them and emit its own kit-shape response, breaking the
+    boilerplate envelope contract. So we render ``BaseCustomError``
+    here ourselves (envelope-aware) and only fall through to the kit's
+    handler for raw ``ResilienceKitError`` instances raised by kit-
+    internal code that never derived from ``BaseCustomError`` — for
+    those we accept the kit's shape because no domain handler exists.
+    """
 
     # Handle project-level custom exceptions first.
     if isinstance(exc, BaseCustomError):
@@ -96,6 +108,28 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
             },
             status=status_code,
         )
+
+    # Raw ResilienceKitError (not bridged via BaseCustomError) → render
+    # through the kit's from_exception projector targeting the project
+    # envelope. Covers exceptions raised deep in the kit itself; in
+    # practice rare because the bridge catches our own raises first.
+    # from_exception returns (body, status, headers); body is already
+    # envelope-shaped because we pass our pydantic ResponseEnvelope as
+    # envelope_cls. Closes M7 B2 (two envelope shapes on the same app).
+    from core.responses.envelope_schema import ResponseEnvelope
+    from resilience_kit.adapters._envelope import from_exception
+    from resilience_kit.exceptions import ResilienceKitError
+
+    if isinstance(exc, ResilienceKitError):
+        body, status_code, headers = from_exception(
+            exc,
+            envelope_cls=ResponseEnvelope,
+        )
+        # The kit fills request_id=None because it doesn't read our
+        # ContextVar. Patch it in from the request scope so the envelope
+        # contract holds end-to-end.
+        body["request_id"] = get_request_id()
+        return Response(body, status=status_code, headers=headers)
 
     # Fall back to DRF's built-in exception handling.
     response = exception_handler(exc, context)
