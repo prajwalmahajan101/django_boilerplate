@@ -70,7 +70,19 @@ def _get_status_map() -> tuple[tuple[type[BaseCustomError], int], ...]:
 
 
 def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
-    """Reshape DRF exceptions into the standard envelope."""
+    """Reshape DRF exceptions into the standard envelope.
+
+    Composition with the resilience kit handler:
+    every ``BaseCustomError`` is *also* a ``ResilienceKitError`` (bridged
+    in ``core.base.exception``). The kit's
+    ``resilience_kit.adapters.django.exception_handler.handle`` would
+    catch them and emit its own kit-shape response, breaking the
+    boilerplate envelope contract. So we render ``BaseCustomError``
+    here ourselves (envelope-aware) and only fall through to the kit's
+    handler for raw ``ResilienceKitError`` instances raised by kit-
+    internal code that never derived from ``BaseCustomError`` — for
+    those we accept the kit's shape because no domain handler exists.
+    """
 
     # Handle project-level custom exceptions first.
     if isinstance(exc, BaseCustomError):
@@ -96,6 +108,19 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
             },
             status=status_code,
         )
+
+    # Raw ResilienceKitError (not bridged via BaseCustomError) → let the
+    # kit's adapter render it. Covers exceptions raised deep in the kit
+    # itself; in practice rare because the bridge catches all our raises.
+    from resilience_kit.adapters.django.exception_handler import (
+        handle as _kit_handle,
+    )
+    from resilience_kit.exceptions import ResilienceKitError
+
+    if isinstance(exc, ResilienceKitError):
+        kit_response = _kit_handle(exc, context)
+        if kit_response is not None:
+            return kit_response
 
     # Fall back to DRF's built-in exception handling.
     response = exception_handler(exc, context)
