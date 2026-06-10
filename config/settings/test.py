@@ -8,6 +8,17 @@ import os
 # Set test-specific env vars before importing base settings
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing-only-not-for-production")
 
+# Resilience kit refuses missing key when crypto.environment defaults to
+# 'prod'. Pin to 'dev' in tests and supply a deterministic Fernet key so
+# every fixture that touches ``EncryptedCharField`` gets reproducible
+# ciphertext without the test runner having to seed env vars.
+os.environ.setdefault("RESILIENCE_CRYPTO__ENVIRONMENT", "dev")
+os.environ.setdefault(
+    "RESILIENCE_CRYPTO__FIELD_ENCRYPTION_KEY",
+    # Deterministic test-only Fernet key — base64 32-byte random.
+    "MV5jaCu1Qx7tHzr6IkbAaWBNGoRxqQ0F2pmYpPzfvSE=",
+)
+
 from .base import *  # noqa: F401, F403, E402
 
 DEBUG = False
@@ -79,3 +90,4 @@ CSRF_TRUSTED_ORIGINS = ["http://testserver"]
 # servers (requests-mock, responses, local HTTP fixtures) that would otherwise
 # be rejected as 127.0.0.1.
 SSRF_BLOCK_PRIVATE_IPS = False
+os.environ.setdefault("RESILIENCE_SSRF__BLOCK_PRIVATE_IPS", "false")

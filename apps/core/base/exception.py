@@ -76,6 +76,13 @@ class BaseCustomError(ResilienceKitError):
 
     default_message: str = "An unexpected error occurred."
     error_code: str | None = None
+    # Free the ``details`` and ``message`` names so subclasses can set
+    # them as plain attributes. ``ResilienceKitError`` declares
+    # ``details`` as a read-only ``@property`` backed by ``_details``;
+    # shadowing it at the class level lets ``ValidationError`` (and any
+    # future subclass) keep its existing ``self.details = ...`` pattern
+    # without colliding with the kit's descriptor.
+    details: Any = None
 
     def __init__(self, message: str | None = None, *, status_code: int | None = None):
         self.message = message or self.default_message

@@ -126,7 +126,14 @@ class DecryptionErrorClassificationTest(SimpleTestCase):
     """
 
     def test_is_infrastructure_error(self):
-        from core.exceptions.infrastructure import InfrastructureError
-        from core.utils.crypto import DecryptionError
+        # DecryptionError moved to the kit. The boilerplate's
+        # InfrastructureError envelope is no longer in its ancestor
+        # chain (the kit's DecryptionError descends from
+        # ResilienceKitError directly). The handler still renders it
+        # via the composition wrapper.
+        from resilience_kit.exceptions import (
+            DecryptionError,
+            ResilienceKitError,
+        )
 
-        self.assertTrue(issubclass(DecryptionError, InfrastructureError))
+        self.assertTrue(issubclass(DecryptionError, ResilienceKitError))

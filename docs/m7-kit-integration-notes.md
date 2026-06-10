@@ -167,9 +167,34 @@
   - **Ask kit**: document the multi-inheritance bridge in MIGRATION;
     or expose a `make_envelope_compatible(cls)` mixin.
 
-## Step 9 — Tests (pending)
+## Step 9 — Tests
 
-(notes added live)
+- **P1** — kit's `ResilienceKitError` exposes `details` as a read-only
+  `@property` backed by `_details`. The boilerplate's `ValidationError`
+  uses `self.details = ...` as a plain attribute. After the bridge,
+  `details` collided. Fixed boilerplate-side by shadowing the kit's
+  property with `details: Any = None` on `BaseCustomError`. Works, but
+  surprises any new subclass author who follows the kit pattern.
+  - **Ask kit**: document the descriptor collision in MIGRATION, or
+    expose `details` as a normal instance attribute on `ResilienceKitError`
+    with `with_details()` as the canonical mutator.
+- **P2** — `test_app` Postgres database has to be created out-of-band
+  (`createdb` or via the docker-compose `db` service applying
+  migrations); the test settings only point at it.
+- **PRAISE** — `migrate --check` returned exit 0 after the
+  EncryptedCharField re-export, confirming Django's autodetector still
+  recognises the field through the `core.base.fields` re-export. No
+  migration churn.
+- **PRAISE** — kit's `testing.reset.reset_all_singletons()` covered
+  every singleton the old hand-rolled `core.testing.reset` touched —
+  no test required a custom reset hook after the swap.
+- Pre-existing failure (not migration-caused): three tests in
+  `test_auth_registry.py::TestCompositeAuthentication` fail because
+  the post-perf-snapshot `CompositeAuthentication._providers_for`
+  reads `getattr(request, "_composite_auth_providers", None)` and a
+  raw `MagicMock()` request auto-creates the attribute, hiding the
+  fallback. Introduced in main commit `6be5dcf` before this branch
+  existed; logged here so the audit report doesn't blame the migration.
 
 ## Step 10 — Push + PR (pending)
 

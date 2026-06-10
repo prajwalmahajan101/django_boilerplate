@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from django.test import SimpleTestCase
 
-from core.resilience.throttles import BurstThrottle
+from resilience_kit.adapters.django.drf_throttles import BurstThrottle
 from core.views import csp_report
 
 
