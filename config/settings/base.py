@@ -121,6 +121,10 @@ MIDDLEWARE = [
     "resilience_kit.adapters.django.middleware.SecurityHeadersMiddleware",
     "resilience_kit.adapters.django.middleware.BodyLimitMiddleware",
     "resilience_kit.adapters.django.middleware.RequestIdMiddleware",
+    # Mirror the kit's request_id into core.context.request_id_ctx so
+    # BaseCustomError, RequestContextFilter, and the envelope handler
+    # see a non-null value. Must sit AFTER RequestIdMiddleware.
+    "core.middleware.bind_request_id.BindRequestIdMiddleware",
     "resilience_kit.adapters.django.middleware.ExceptionLoggingMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
