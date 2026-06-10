@@ -100,11 +100,13 @@ SITE_ID = 1
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "core.middleware.selective_cors.SelectiveCORSMiddleware",
-    "core.middleware.security_headers.SecurityHeadersMiddleware",
-    "core.middleware.body_limit.ContentLengthLimitMiddleware",
-    "core.middleware.request_id.RequestIDMiddleware",
-    "core.middleware.exception_logging.ExceptionLoggingMiddleware",
+    # Kit-owned outer shell: CORS, hardening headers, body-size cap,
+    # request-id stamping, and the catch-all exception logger.
+    "resilience_kit.adapters.django.middleware.SelectiveCorsMiddleware",
+    "resilience_kit.adapters.django.middleware.SecurityHeadersMiddleware",
+    "resilience_kit.adapters.django.middleware.BodyLimitMiddleware",
+    "resilience_kit.adapters.django.middleware.RequestIdMiddleware",
+    "resilience_kit.adapters.django.middleware.ExceptionLoggingMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -112,8 +114,11 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # Boilerplate-specific: structured request logging + envelope-aware
+    # rate-limit header injection (the kit emits headers via the throttle
+    # path; this one decorates 2xx responses too).
     "core.middleware.request_logging.RequestLoggingMiddleware",
-    "core.middleware.rate_limit_headers.RateLimitHeadersMiddleware",
+    "resilience_kit.adapters.django.middleware.RateLimitHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
