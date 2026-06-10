@@ -109,18 +109,27 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
             status=status_code,
         )
 
-    # Raw ResilienceKitError (not bridged via BaseCustomError) → let the
-    # kit's adapter render it. Covers exceptions raised deep in the kit
-    # itself; in practice rare because the bridge catches all our raises.
-    from resilience_kit.adapters.django.exception_handler import (
-        handle as _kit_handle,
-    )
+    # Raw ResilienceKitError (not bridged via BaseCustomError) → render
+    # through the kit's from_exception projector targeting the project
+    # envelope. Covers exceptions raised deep in the kit itself; in
+    # practice rare because the bridge catches our own raises first.
+    # from_exception returns (body, status, headers); body is already
+    # envelope-shaped because we pass our pydantic ResponseEnvelope as
+    # envelope_cls. Closes M7 B2 (two envelope shapes on the same app).
+    from resilience_kit.adapters._envelope import from_exception
     from resilience_kit.exceptions import ResilienceKitError
 
+    from core.responses.envelope_schema import ResponseEnvelope
+
     if isinstance(exc, ResilienceKitError):
-        kit_response = _kit_handle(exc, context)
-        if kit_response is not None:
-            return kit_response
+        body, status_code, headers = from_exception(
+            exc, envelope_cls=ResponseEnvelope,
+        )
+        # The kit fills request_id=None because it doesn't read our
+        # ContextVar. Patch it in from the request scope so the envelope
+        # contract holds end-to-end.
+        body["request_id"] = get_request_id()
+        return Response(body, status=status_code, headers=headers)
 
     # Fall back to DRF's built-in exception handling.
     response = exception_handler(exc, context)
