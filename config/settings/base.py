@@ -33,8 +33,8 @@ def _env_int(name: str, default: str) -> int:
     value = os.getenv(name, default)
     try:
         return int(value)
-    except (ValueError, TypeError):
-        raise ImproperlyConfigured(f"{name}={value!r} is not a valid integer")
+    except (ValueError, TypeError) as exc:
+        raise ImproperlyConfigured(f"{name}={value!r} is not a valid integer") from exc
 
 
 def _env_bool(name: str, default: str) -> bool:

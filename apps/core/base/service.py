@@ -216,10 +216,7 @@ class BaseService(ABC, Generic[ModelType]):
             )
             capped_limit = self.max_page_size
 
-        if offset is not None:
-            qs = qs[offset : offset + capped_limit]
-        else:
-            qs = qs[:capped_limit]
+        qs = qs[offset : offset + capped_limit] if offset is not None else qs[:capped_limit]
 
         return qs
 

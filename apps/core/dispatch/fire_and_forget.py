@@ -107,7 +107,7 @@ class FireAndForgetQueue:
     def _run_task_safely(fn: Callable[[], None]) -> None:
         try:
             fn()
-        except Exception:  # — best-effort: log + drop
+        except Exception:
             logger.exception("fire_and_forget task raised")
 
     def drain(self, timeout: float = 5.0) -> bool:

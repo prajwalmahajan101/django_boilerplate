@@ -6,9 +6,13 @@ extend-exclude = ["migrations", "staticfiles", ".venv", "build", "dist"]
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "N", "RUF"]
 ignore = [
-    "E501",  # line length — formatter handles it
-    "B008",  # function call in default argument (Django common idiom)
-    "N818",  # exception names without "Error" suffix (legacy aliases)
+    "E501",   # line length — formatter handles it
+    "B008",   # function call in default argument (Django common idiom)
+    "N818",   # exception names without "Error" suffix (legacy aliases)
+    "RUF012", # ClassVar on Django Meta / DRF serializer Meta / view permission_classes — false-positives on framework patterns
+    "RUF001", # ambiguous unicode in strings — author's choice
+    "RUF003", # ambiguous unicode in comments — author's choice
+    "SIM117", # combine `with` statements — readability is mostly a wash; keep nested when contexts are unrelated
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -16,6 +20,12 @@ ignore = [
 "apps/*/tests/*" = ["D", "N802", "N803", "N806"]
 "tests/*" = ["D", "N802", "N803", "N806"]
 "config/settings/*" = ["F403", "F405"]
+# Django ASGI/WSGI/Celery entry points run django.setup() before importing app modules.
+"config/asgi.py" = ["E402"]
+"config/wsgi.py" = ["E402"]
+"config/celery.py" = ["E402"]
+# sanitizers.py uses local PascalCase aliases for django.http types; intentional shadow.
+"apps/core/api_log/sanitizers.py" = ["N806"]
 
 [tool.ruff.format]
 quote-style = "double"

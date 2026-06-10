@@ -40,7 +40,7 @@ class JsonEditorWidget(Textarea):
 
     def render(self, name, value, attrs=None, renderer=None):
         # Pretty-print JSON for readability
-        if value and isinstance(value, (dict, list)):
+        if value and isinstance(value, dict | list):
             value = json.dumps(value, indent=2, ensure_ascii=False)
         elif value and isinstance(value, str):
             try:

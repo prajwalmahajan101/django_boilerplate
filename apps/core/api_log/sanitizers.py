@@ -72,7 +72,7 @@ def audit_safe(value: Any) -> Any:
     swallow, silently dropping the row. Convert bytes to a size
     summary; everything else passes through.
     """
-    if isinstance(value, (bytes, bytearray)):
+    if isinstance(value, bytes | bytearray):
         return {"__bytes__": True, "size_bytes": len(value)}
     return value
 
@@ -99,7 +99,7 @@ def summarise_body_for_audit(value: Any) -> Any:
 
     if QueryDict is not None and isinstance(value, QueryDict):
         fields: list[dict[str, Any]] = []
-        for key in value.keys():
+        for key in value:
             for item in value.getlist(key):
                 entry: dict[str, Any] = {"name": key}
                 if UploadedFile is not None and isinstance(item, UploadedFile):
@@ -107,7 +107,7 @@ def summarise_body_for_audit(value: Any) -> Any:
                     if item.content_type:
                         entry["content_type"] = item.content_type
                     entry["size_bytes"] = item.size
-                elif isinstance(item, (bytes, bytearray)):
+                elif isinstance(item, bytes | bytearray):
                     entry["size_bytes"] = len(item)
                 elif isinstance(item, str):
                     entry["value"] = item if len(item) <= 200 else item[:200] + "…"
@@ -176,7 +176,7 @@ def serialize_body(value: Any, max_len: int | None = None) -> str | None:
         max_len = int(getattr(settings, "API_LOG_MAX_BODY_LEN", 4096))
     try:
         structured: Any
-        if isinstance(value, (bytes, bytearray)):
+        if isinstance(value, bytes | bytearray):
             decoded = bytes(value).decode("utf-8", errors="replace")
             structured = _try_parse_json(decoded, fallback=decoded)
         elif isinstance(value, str):
@@ -185,10 +185,7 @@ def serialize_body(value: Any, max_len: int | None = None) -> str | None:
             structured = value
 
         redacted = sanitize_for_log(structured, max_string_length=max_len)
-        if isinstance(redacted, str):
-            text = redacted
-        else:
-            text = json.dumps(redacted, default=str)
+        text = redacted if isinstance(redacted, str) else json.dumps(redacted, default=str)
         return truncate(text, max_len)
     except Exception:
         return None
@@ -200,7 +197,7 @@ def _try_parse_json(text: str, fallback: Any) -> Any:
         parsed = json.loads(text)
     except (ValueError, TypeError):
         return fallback
-    if isinstance(parsed, (dict, list)):
+    if isinstance(parsed, dict | list):
         return parsed
     return fallback
 

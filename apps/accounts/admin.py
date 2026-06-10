@@ -160,7 +160,7 @@ class APIKeyAdmin(BaseModelAdmin):
         raw_key = getattr(request, "_raw_api_key", None)
         if raw_key:
             changelist_url = reverse(
-                "admin:%s_%s_changelist" % (obj._meta.app_label, obj._meta.model_name),
+                f"admin:{obj._meta.app_label}_{obj._meta.model_name}_changelist",
                 current_app=self.admin_site.name,
             )
             return HttpResponse(

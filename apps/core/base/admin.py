@@ -44,7 +44,7 @@ class BaseModelAdmin(ModelAdmin):
         audit_fields = {"created_by", "updated_by", "created_at", "updated_at"}
         already_present = any(audit_fields & set(fs[1].get("fields", ())) for fs in fieldsets)
         if not already_present:
-            fieldsets = list(fieldsets) + [self.audit_fieldset]
+            fieldsets = [*list(fieldsets), self.audit_fieldset]
         return fieldsets
 
     def save_model(self, request, obj, form, change):

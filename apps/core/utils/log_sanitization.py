@@ -79,7 +79,7 @@ def _sanitize_value(
     if isinstance(value, bool):
         return value
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return value
 
     if isinstance(value, str):
@@ -91,7 +91,7 @@ def _sanitize_value(
     if isinstance(value, dict):
         return _sanitize_dict_for_log(value, max_str, max_keys, max_items, depth)
 
-    if isinstance(value, (list, tuple, set, frozenset)):
+    if isinstance(value, list | tuple | set | frozenset):
         return _sanitize_iterable_for_log(value, max_str, max_keys, max_items, depth)
 
     try:

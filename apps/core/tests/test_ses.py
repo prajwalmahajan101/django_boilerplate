@@ -169,10 +169,9 @@ class SendEmailErrorClassificationTest(TestCase):
             )
 
     def test_missing_sender_raises_ses_exception(self):
-        with override_settings(SES_SENDER_EMAIL=""):
-            with self.assertRaises(SESException):
-                send_email(
-                    recipient_emails=["to@example.com"],
-                    subject="x",
-                    body_html="<p>x</p>",
-                )
+        with override_settings(SES_SENDER_EMAIL=""), self.assertRaises(SESException):
+            send_email(
+                recipient_emails=["to@example.com"],
+                subject="x",
+                body_html="<p>x</p>",
+            )
