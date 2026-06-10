@@ -46,7 +46,7 @@ sentry-sdk[django]>=2.0,<3.0
 # The shared resilience kit owns circuit breakers, retries, throttles,
 # the HTTP client, audit logging, SSRF guard, Fernet helper, and the
 # kit-owned middleware. Pulls tenacity + pybreaker transitively.
-resilience-kit[django,redis,http,crypto,audit-postgres]==0.1.0rc1
+resilience-kit[django,redis,http,crypto,audit-postgres]==0.1.0
 
 # AWS
 boto3>=1.35,<2.0
