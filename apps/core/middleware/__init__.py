@@ -1,11 +1,11 @@
-from core.middleware.exception_logging import ExceptionLoggingMiddleware
-from core.middleware.rate_limit_headers import RateLimitHeadersMiddleware
-from core.middleware.request_id import RequestIDMiddleware
+"""Boilerplate-owned middleware.
+
+The kit-owned middleware (``SelectiveCors``, ``SecurityHeaders``,
+``BodyLimit``, ``RequestId``, ``ExceptionLogging``, ``RateLimitHeaders``)
+now live in :mod:`resilience_kit.adapters.django.middleware`. What
+stays here is the boilerplate-specific shell.
+"""
+
 from core.middleware.request_logging import RequestLoggingMiddleware
 
-__all__ = [
-    "ExceptionLoggingMiddleware",
-    "RateLimitHeadersMiddleware",
-    "RequestIDMiddleware",
-    "RequestLoggingMiddleware",
-]
+__all__ = ["RequestLoggingMiddleware"]
