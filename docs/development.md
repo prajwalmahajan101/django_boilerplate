@@ -41,7 +41,7 @@ This starts all services:
 | Service | Description | Port |
 |---|---|---|
 | web | Django dev server (hot-reload) | 8000 |
-| nginx | Reverse proxy + rate limiting | 80 |
+| nginx | Reverse proxy (config: [`nginx/default.conf`](../nginx/default.conf); dev-only — prod uses ingress / ALB) | 80 |
 | db | PostgreSQL 16 | 5432 |
 | valkey | Valkey 8 (cache + rate limiting) | 6379 |
 | rabbitmq | RabbitMQ 3.13 (task broker) | 5672, 15672 (mgmt) |
