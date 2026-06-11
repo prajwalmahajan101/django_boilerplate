@@ -93,19 +93,3 @@ tests without a separate test image.
 
 Low priority — only matters if/when CI moves to docker-based test
 execution.
-
----
-
-## P4 — `TestCompositeAuthentication` MagicMock interaction (3 pre-existing failures)
-
-**Surfaced:** M7 verification.
-
-Introduced in main commit `6be5dcf perf(auth)`, before the
-`feat/depend-on-resilience-kit` branch existed. `MagicMock()` request
-auto-creates `_composite_auth_providers` attribute, defeating the
-per-request snapshot's `cached is None` check. Three tests fail
-identically on `main` HEAD and on this branch.
-
-Fix is one line in the tests (`MagicMock(spec=HttpRequest)` or
-delete the auto-attribute before each test) but belongs in an auth
-test PR, not the kit migration PR.
