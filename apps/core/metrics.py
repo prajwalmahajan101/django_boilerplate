@@ -72,8 +72,7 @@ _FORBIDDEN_LABEL_KEYS: frozenset[str] = frozenset(
 
 
 class CardinalityViolation(ValueError):
-    """Raised when a metrics call site passes a label that would blow up
-    Prometheus' time-series space.
+    """Raised when a metrics call site would blow up Prometheus' time-series space.
 
     Catching this at runtime is intentional — a metric registered with
     high-cardinality labels can take down the scrape endpoint long before

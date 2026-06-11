@@ -1,0 +1,11 @@
+[darglint]
+docstring_style = google
+strictness = short
+# Methods/functions starting with `_` are internal — skip them.
+ignore_regex = ^_
+# Docstring-noise relaxations (see docs/known-issues.md "Lint relaxations").
+# DAR101 (missing param) / DAR201 (missing returns) fire on every typed
+# function with a short docstring; the type signature already carries
+# the information. Keep DAR301 (yields), DAR401 (raises) enforced — those
+# *do* surface caller-relevant facts the signature can't.
+ignore = DAR101,DAR201

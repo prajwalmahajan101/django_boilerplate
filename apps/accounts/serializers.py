@@ -79,6 +79,10 @@ class GoogleCallbackSerializer(serializers.Serializer):
 
         Defense-in-depth: Google's server also validates redirect URIs,
         but we should not rely solely on the OAuth provider.
+
+        Raises:
+            ValidationError: When the allowlist is empty/missing or the
+                supplied URI is not on it.
         """
         from django.conf import settings
 

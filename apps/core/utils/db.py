@@ -1,5 +1,4 @@
-"""
-External database connection utility using SQLAlchemy.
+"""External database connection utility using SQLAlchemy.
 
 Provides a lightweight interface for querying external databases (not the
 primary Django database). All SQLAlchemy imports are lazy to avoid loading

@@ -73,6 +73,12 @@ class UserService:
         the IANA database, and delegates persistence to the repository.
         Locking + atomicity now live on ``UserRepository.update`` — see
         ISSUE-008. Don't re-wrap with ``transaction.atomic`` here.
+
+        Raises:
+            NoFieldsToUpdateError: When ``data`` contains no writable
+                profile fields.
+            InvalidTimezoneError: When the supplied ``timezone`` is not
+                in :func:`zoneinfo.available_timezones`.
         """
         update_data = {k: v for k, v in data.items() if k in self.UPDATABLE_PROFILE_FIELDS}
 

@@ -36,7 +36,8 @@ def enqueue(
     Args:
         task_name: Fully qualified task name (matches what
             :func:`register_task` recorded).
-        *args, **kwargs: Forwarded to the task body.
+        args: Positional arguments forwarded to the task body.
+        kwargs: Keyword arguments forwarded to the task body.
         queue: Override the default queue. Defaults to
             ``settings.CELERY_TASK_DEFAULT_QUEUE`` when set.
         countdown: Delay in seconds before the worker picks it up.

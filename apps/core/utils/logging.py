@@ -61,6 +61,10 @@ def domain_context(
 ) -> Iterator[None]:
     """Stamp business identifiers onto every nested log record.
 
+    Yields:
+        None — used purely for its on-entry / on-exit side effects on
+        the context-var stack.
+
     Usage::
 
         with domain_context(partner_id=partner.pk, app_number=app_number):
@@ -128,6 +132,13 @@ def log_duration(
     shim only forwards labels that match the cardinality contract — extras
     like ``app_number`` / ``partner_id`` stay on the log record but are NOT
     sent to the metric. See ``docs/observability.md``.
+
+    Yields:
+        None — block runs inside the timing scope.
+
+    Raises:
+        BaseException: Re-raises whatever the timed block raised after
+            emitting the failure log.
     """
     start = time.perf_counter()
     status = "ok"

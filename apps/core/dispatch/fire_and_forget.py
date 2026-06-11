@@ -157,6 +157,7 @@ def get_queue(name: str) -> FireAndForgetQueue:
 
 
 def registered_queues() -> list[FireAndForgetQueue]:
+    """Return a snapshot of every queue currently registered."""
     with _registry_lock:
         return list(_queues.values())
 

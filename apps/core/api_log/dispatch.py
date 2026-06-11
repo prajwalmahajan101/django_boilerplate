@@ -80,7 +80,8 @@ def capture_and_dispatch(
 
     Args:
         fn: The wrapped callable (sync).
-        args, kwargs: Positional + keyword arguments forwarded to ``fn``.
+        args: Positional arguments forwarded to ``fn``.
+        kwargs: Keyword arguments forwarded to ``fn``.
         build_row: ``(result, exc, elapsed_ms, *, log_id=...) -> row_dict``
             — invoked after the call. Exactly one of ``result`` /
             ``exc`` is non-None. The ``log_id`` kwarg is optional;
@@ -88,6 +89,10 @@ def capture_and_dispatch(
         service_name: Logical service tag for correlation logs. Pure
             metadata; not threaded into the row.
         direction: ``"inbound"`` / ``"outbound"`` — correlation only.
+
+    Raises:
+        BaseException: Re-raises whatever ``fn`` raised after the audit
+            row has been queued (the wrapper is observability-only).
     """
     from core.utils.timing import perf_timer
 

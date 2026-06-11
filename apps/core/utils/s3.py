@@ -143,6 +143,10 @@ def fetch_bytes_from_s3(s3_uri: str, max_size: int) -> tuple[bytes, str]:
     Returns ``(body_bytes, content_type)``. Used by the remark email builder
     when assembling MIME attachments. Raises :class:`S3Exception` if the
     object exceeds ``max_size`` so we never load oversized blobs into memory.
+
+    Raises:
+        S3Exception: If the object exceeds ``max_size`` or the GetObject
+            call fails after the resilience kit's retry budget is spent.
     """
     bucket, key = parse_s3_uri(s3_uri)
     with _s3_call("fetch_bytes", bucket, key):

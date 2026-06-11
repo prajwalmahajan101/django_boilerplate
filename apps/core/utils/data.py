@@ -25,6 +25,9 @@ def sanitize_string(value: str, max_length: int = 1000) -> str:
 
     Does NOT perform character escaping because parameter values are passed
     to database drivers via parameterized queries which handle escaping internally.
+
+    Raises:
+        InvalidInputError: When ``value`` exceeds ``max_length``.
     """
     if len(value) > max_length:
         raise InvalidInputError(f"String too long: {len(value)} chars (max: {max_length})")
