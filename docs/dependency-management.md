@@ -12,8 +12,8 @@ Lock discipline is layered, scanners are pinned, the supply-chain graph is an ar
 |---|---|---|---|
 | **base** | `requirements/base.in` | `base.txt` | Runtime dependencies shared by dev + prod + test. |
 | **prod** | `requirements/prod.in` | `prod.txt` | Production-only additions on top of `base`. Installed by the runtime Docker image. |
-| **dev** | `requirements/dev.in` | `dev.txt` | Local-dev tooling (`pip-tools`, `ipython`, `django-debug-toolbar`, `pip-audit`, `cyclonedx-bom`, `psycopg2-binary`). |
-| **test** | `requirements/test.in` | `test.txt` | Test-only tooling (`pytest`, `pytest-django`, `pytest-cov`, `factory-boy`). |
+| **dev** | `requirements/dev.in` | `dev.txt` | Local-dev tooling (`pip-tools`, `ipython`, `django-debug-toolbar`, `pip-audit`, `cyclonedx-bom`, `psycopg2-binary`). Includes `-r test.in` so the dev container also ships pytest. |
+| **test** | `requirements/test.in` | `test.txt` | Test-only tooling (`pytest`, `pytest-django`, `pytest-cov`, `factory-boy`). Standalone for CI test images that don't need dev tooling. |
 
 The Dockerfile takes `REQUIREMENTS_FILE` as a build arg (defaults to `requirements/prod.txt`) and enforces `pip install --require-hashes`. Any wheel whose sha256 doesn't match the pinned hash fails the build — the supply-chain boundary is at image-build time.
 

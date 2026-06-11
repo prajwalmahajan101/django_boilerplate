@@ -1,4 +1,5 @@
 -r base.txt
+-r test.in
 
 psycopg2-binary>=2.9,<3.0  # Use binary build for local dev (no libpq-dev needed)
 django-debug-toolbar>=6.0,<7.0
