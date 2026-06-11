@@ -5,6 +5,8 @@ from django.apps import AppConfig
 
 
 class CoreConfig(AppConfig):
+    """Django app config for the shared ``core`` package."""
+
     name = "core"
     default_auto_field = "django.db.models.BigAutoField"
 
@@ -16,10 +18,11 @@ class CoreConfig(AppConfig):
         self._register_resilience_services()
 
     def _register_resilience_services(self) -> None:
-        """Register one entry per outbound integration so the
-        ``@resilient("name")`` decorator has a breaker + retry policy to
-        bind to. Extend this method per-domain when you add a new
-        external dependency.
+        """Register one entry per outbound integration with the resilience kit.
+
+        The ``@resilient("name")`` decorator binds to entries registered here
+        for breaker + retry policy. Extend this method per-domain when you
+        add a new external dependency.
 
         ``s3`` excludes ``S3NotFoundError`` so cache-miss probes don't
         trip the breaker — only genuine outages (timeouts, 5xx,

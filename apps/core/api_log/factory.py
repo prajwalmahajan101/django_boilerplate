@@ -67,6 +67,7 @@ def get_backend() -> ApiLogBackend:
 
 
 def get_apilog_queue() -> FireAndForgetQueue:
+    """Return the lazily-built fire-and-forget queue used by the api_log pipeline."""
     return _ensure_queue()
 
 

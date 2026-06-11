@@ -187,6 +187,10 @@ class APIKey(BaseModel):
 
         The raw key is only available at creation time.
         Retries up to 3 times on prefix collision (astronomically unlikely).
+
+        Raises:
+            APIKeyGenerationError: If three successive prefix collisions
+                occur (effectively impossible barring a broken RNG).
         """
         last_exc = None
         for _ in range(3):

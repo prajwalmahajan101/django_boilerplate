@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 
 class OrmApiLogBackend:
+    """ORM-backed ``api_log`` sink — persists rows via ``ApiLog.objects.create``."""
+
     backend_name = "orm"
 
     def persist(self, row: dict) -> None:

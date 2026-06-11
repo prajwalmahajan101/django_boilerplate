@@ -163,6 +163,8 @@ def send_email(
             identity, missing sender configuration). Not retried.
         TransientError: Throttling, internal SES failures, or network
             errors. Retried automatically by ``@resilient``.
+        _classify_client_error: (darglint sees the helper's name on the
+            ``raise`` line; the real types are the two above.)
     """
     sender = sender_email or getattr(settings, "SES_SENDER_EMAIL", "")
     if not sender:

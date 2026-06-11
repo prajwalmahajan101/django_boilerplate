@@ -32,6 +32,10 @@ def register_resource(model_dotted_name: str, resource: str) -> None:
     the same key with a different resource raises ``ValueError`` because
     a model can only own one RBAC resource — silent overwrites would
     cause subtle permission drift.
+
+    Raises:
+        ValueError: If ``model_dotted_name`` is already mapped to a
+            different resource.
     """
     key = model_dotted_name.lower()
     with _lock:

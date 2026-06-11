@@ -2,6 +2,8 @@ from django.apps import AppConfig
 
 
 class AccountsConfig(AppConfig):
+    """Django app config for ``accounts`` — wires RBAC, exceptions, auth providers."""
+
     name = "accounts"
     default_auto_field = "django.db.models.BigAutoField"
 

@@ -130,6 +130,7 @@ def error_envelope(
 
 
 def envelope_example(data: Any, message: str = "Success") -> dict[str, Any]:
+    """Return a sample success envelope for OpenAPI schema examples."""
     return {
         "success": True,
         "message": message,
@@ -140,6 +141,7 @@ def envelope_example(data: Any, message: str = "Success") -> dict[str, Any]:
 
 
 def error_example(message: str, errors: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    """Return a sample error envelope for OpenAPI schema examples."""
     return {
         "success": False,
         "message": message,

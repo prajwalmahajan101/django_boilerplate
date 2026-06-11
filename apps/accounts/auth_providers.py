@@ -13,6 +13,8 @@ from accounts.authentication import APIKeyAuthentication
 
 
 class APIKeyProvider:
+    """Auth provider backed by ``APIKeyAuthentication`` (``X-API-Key`` header)."""
+
     name = "api_key"
 
     def __init__(self) -> None:
@@ -26,6 +28,8 @@ class APIKeyProvider:
 
 
 class JWTProvider:
+    """Auth provider backed by simple-jwt's ``JWTAuthentication``."""
+
     name = "jwt"
 
     def __init__(self) -> None:
@@ -41,8 +45,12 @@ class JWTProvider:
 
 
 class GoogleOAuthProvider:
-    """Routed (not per-request) — the Google login view mints a JWT
-    that :class:`JWTProvider` then validates. Always returns ``None``."""
+    """Routed-only Google OAuth provider; always returns ``None`` on per-request auth.
+
+    The Google login view mints a JWT that :class:`JWTProvider` then
+    validates on subsequent requests, so this provider has no
+    per-request authentication work to do.
+    """
 
     name = "oauth_google"
 

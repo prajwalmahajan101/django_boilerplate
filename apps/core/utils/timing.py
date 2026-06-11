@@ -71,6 +71,10 @@ def perf_timer() -> Iterator[PerfTimer]:
     The block can read ``.elapsed_ms`` at any point — useful for
     stamping the success-side audit row inside the try and the
     failure-side row in the except off the same timer.
+
+    Yields:
+        PerfTimer: Live timer; ``.elapsed_ms`` reads current monotonic
+        delta during the block and a frozen value after exit.
     """
     timer = PerfTimer()
     try:

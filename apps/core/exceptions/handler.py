@@ -83,7 +83,6 @@ def api_exception_handler(exc: Exception, context: dict[str, Any]) -> Response |
     internal code that never derived from ``BaseCustomError`` — for
     those we accept the kit's shape because no domain handler exists.
     """
-
     # Handle project-level custom exceptions first.
     if isinstance(exc, BaseCustomError):
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

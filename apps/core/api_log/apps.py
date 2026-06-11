@@ -4,6 +4,8 @@ from django.apps import AppConfig
 
 
 class ApiLogConfig(AppConfig):
+    """Django app config for ``api_log`` — initialises the persistence backend on ready."""
+
     default_auto_field = "django.db.models.BigAutoField"
     name = "core.api_log"
     label = "api_log"

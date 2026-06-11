@@ -40,6 +40,14 @@ add-ignore = [
     "D107",  # missing __init__ docstring
     "D203",  # 1 blank line before class docstring (conflicts with D211)
     "D213",  # multi-line summary on second line (conflicts with D212)
+    # Docstring-noise relaxations (see docs/known-issues.md "Lint relaxations").
+    # The repo convention (CLAUDE.md) is "no comments unless the *why* is
+    # non-obvious"; a docstring repeating the method/class name adds no signal.
+    # Class/function-level docstrings (D101/D103) and formatting (D2xx/D4xx)
+    # are still enforced — those catch real intent gaps.
+    "D102",  # missing docstring in public method
+    "D105",  # missing docstring in magic method
+    "D106",  # missing docstring in public nested class (DRF Meta, etc.)
 ]
 match = "(?!test_|migrations|conftest).*\\.py"
 match-dir = "(?!migrations|tests|\\.).*"
@@ -48,3 +56,7 @@ match-dir = "(?!migrations|tests|\\.).*"
 docstring_style = "google"
 strictness = "short"
 ignore_regex = "^_"
+# NOTE: darglint 1.8 doesn't actually read pyproject.toml; the noise-code
+# ignores (DAR101 / DAR201) live as CLI args in .pre-commit-config.yaml.
+# This section is kept for the other settings, which the wrapper still
+# honours when invoked with --docstring-style + --strictness on the CLI.

@@ -40,9 +40,9 @@ def extract_filters(
 
     Missing params are silently skipped (not supplied = no filter).
 
-    Raises:
-        InvalidInputError: On type-coercion failure. The DRF handler
-            envelopes this as a 400 response with code ``INVALID_INPUT``.
+    Type-coercion failures from :func:`_coerce` propagate as
+    ``InvalidInputError``; the DRF handler envelopes them as a 400
+    response with code ``INVALID_INPUT``.
     """
     filters: dict[str, Any] = {}
     for fp in filter_params:

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 
 class NoopApiLogBackend:
+    """Fail-open ``api_log`` backend; retains rows in-memory for test assertions."""
+
     backend_name = "noop"
 
     def __init__(self) -> None:
