@@ -11,6 +11,12 @@ Usage::
 
     s3  = get_aws_client("s3")
     ses = get_aws_client("ses", region="us-east-1")
+
+Dormant (transitively): the only in-tree importers as of M2 are
+``core/utils/s3.py`` and ``core/utils/ses.py``, both themselves dormant.
+Omitted from the coverage gate. Flip to request-path the moment a
+non-dormant caller appears, and add an integration test for that caller's
+path.
 """
 
 from __future__ import annotations

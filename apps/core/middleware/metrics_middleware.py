@@ -9,6 +9,13 @@ exporter outage is in progress" anti-pattern.
 The route label intentionally uses ``request.resolver_match.view_name``
 rather than the raw path so URL parameters (IDs, slugs) don't blow up
 cardinality. See ``docs/observability.md``.
+
+Dormant: not on the request path today; ``config/settings/base.py``
+``MIDDLEWARE`` deliberately does not list this class (see ``apps/core/CLAUDE.md``
+§ "core/middleware/metrics_middleware.py"). Omitted from the coverage
+gate. The dormant-import AST gate scheduled for M3 will fail the build if
+``MIDDLEWARE`` (or any other production wiring) starts referencing it
+without a matching integration test landing in the same change.
 """
 
 from __future__ import annotations
