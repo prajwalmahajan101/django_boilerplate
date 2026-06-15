@@ -71,9 +71,7 @@ def test_from_django_page_overrides_items_when_provided():
 
 
 def test_manual_construction_middle_page():
-    resp = PaginatedResponse(
-        items=[1, 2, 3], total_count=12, page_size=3, page_number=2
-    )
+    resp = PaginatedResponse(items=[1, 2, 3], total_count=12, page_size=3, page_number=2)
     body = _data(resp)
     assert body["items"] == [1, 2, 3]
     assert body["pagination"] == {
@@ -87,9 +85,7 @@ def test_manual_construction_middle_page():
 
 
 def test_manual_construction_empty_page():
-    resp = PaginatedResponse(
-        items=[], total_count=0, page_size=10, page_number=1
-    )
+    resp = PaginatedResponse(items=[], total_count=0, page_size=10, page_number=1)
     body = _data(resp)
     assert body["items"] == []
     assert body["pagination"]["total_pages"] == 0
@@ -98,9 +94,7 @@ def test_manual_construction_empty_page():
 
 
 def test_manual_construction_last_page():
-    resp = PaginatedResponse(
-        items=[42], total_count=21, page_size=10, page_number=3
-    )
+    resp = PaginatedResponse(items=[42], total_count=21, page_size=10, page_number=3)
     pag = _data(resp)["pagination"]
     assert pag["total_pages"] == 3
     assert pag["has_previous"] is True
@@ -108,18 +102,14 @@ def test_manual_construction_last_page():
 
 
 def test_manual_construction_first_page():
-    resp = PaginatedResponse(
-        items=[1], total_count=21, page_size=10, page_number=1
-    )
+    resp = PaginatedResponse(items=[1], total_count=21, page_size=10, page_number=1)
     pag = _data(resp)["pagination"]
     assert pag["has_previous"] is False
     assert pag["has_next"] is True
 
 
 def test_manual_construction_defaults_items_when_omitted():
-    resp = PaginatedResponse(
-        total_count=0, page_size=10, page_number=1
-    )
+    resp = PaginatedResponse(total_count=0, page_size=10, page_number=1)
     assert _data(resp)["items"] == []
 
 
@@ -133,9 +123,7 @@ def test_manual_construction_requires_pagination_args():
 
 
 def test_page_size_zero_guards_against_divzero():
-    resp = PaginatedResponse(
-        items=[], total_count=0, page_size=0, page_number=1
-    )
+    resp = PaginatedResponse(items=[], total_count=0, page_size=0, page_number=1)
     assert _data(resp)["pagination"]["total_pages"] == 0
 
 

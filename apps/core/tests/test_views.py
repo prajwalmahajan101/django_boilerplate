@@ -19,7 +19,6 @@ from core.lifecycle.healthcheck import HealthCheckResult
 from django.test import override_settings
 from rest_framework.test import APIRequestFactory, force_authenticate
 
-
 # ---------- helpers ------------------------------------------------------
 
 
@@ -58,7 +57,8 @@ def test_health_check_healthy_unprivileged_omits_detail():
     request = factory.get("/api/health/")
     request.user = _anon_user()
     with patch.object(
-        core_views, "run_checks",
+        core_views,
+        "run_checks",
         return_value=_stub_results(("database", True, "ok")),
     ):
         resp = _call(core_views.health_check, request)
@@ -72,7 +72,8 @@ def test_health_check_unhealthy_returns_503():
     request = factory.get("/api/health/")
     request.user = _anon_user()
     with patch.object(
-        core_views, "run_checks",
+        core_views,
+        "run_checks",
         return_value=_stub_results(("database", False, "down")),
     ):
         resp = _call(core_views.health_check, request)
@@ -85,7 +86,8 @@ def test_health_check_privileged_attaches_check_detail():
     request = factory.get("/api/health/")
     force_authenticate(request, user=_privileged_user())
     with patch.object(
-        core_views, "run_checks",
+        core_views,
+        "run_checks",
         return_value=_stub_results(("database", True, "1ms")),
     ):
         resp = _call(core_views.health_check, request)
@@ -98,7 +100,8 @@ def test_health_check_privileged_short_status_for_unhealthy_db():
     request = factory.get("/api/health/")
     force_authenticate(request, user=_privileged_user())
     with patch.object(
-        core_views, "run_checks",
+        core_views,
+        "run_checks",
         return_value=_stub_results(("database", False, "")),
     ):
         resp = _call(core_views.health_check, request)
@@ -110,7 +113,8 @@ def test_health_check_privileged_short_status_for_unhealthy_other():
     request = factory.get("/api/health/")
     force_authenticate(request, user=_privileged_user())
     with patch.object(
-        core_views, "run_checks",
+        core_views,
+        "run_checks",
         return_value=_stub_results(("cache", False, "")),
     ):
         resp = _call(core_views.health_check, request)
@@ -125,7 +129,8 @@ def test_readiness_check_ready_returns_200():
     request = factory.get("/api/readiness/")
     request.user = _anon_user()
     with patch.object(
-        core_views, "run_checks",
+        core_views,
+        "run_checks",
         return_value=_stub_results(
             ("database", True, "ok"),
             ("cache", True, "ok"),
@@ -142,7 +147,8 @@ def test_readiness_check_not_ready_returns_503():
     request = factory.get("/api/readiness/")
     request.user = _anon_user()
     with patch.object(
-        core_views, "run_checks",
+        core_views,
+        "run_checks",
         return_value=_stub_results(
             ("database", True, "ok"),
             ("cache", False, "valkey down"),

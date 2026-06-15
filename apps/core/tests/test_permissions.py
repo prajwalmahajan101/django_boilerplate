@@ -23,7 +23,6 @@ from core.rbac_registry import (
     resource_for,
 )
 
-
 # ---------- HasResourcePermission ----------------------------------------
 
 
