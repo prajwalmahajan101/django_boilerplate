@@ -1,4 +1,12 @@
-"""SES utilities: send HTML emails via Amazon Simple Email Service."""
+"""SES utilities: send HTML emails via Amazon Simple Email Service.
+
+Dormant: ships in-tree for downstream forks but is not on the request path
+today (zero in-tree callers as of M2; the existing test suite exercises the
+MIME rendering surface without wiring SES into any view). Omitted from the
+coverage gate. The dormant-import AST gate scheduled for M3 will fail the
+build if anything under ``apps/`` imports from this module without a
+matching integration test.
+"""
 
 from __future__ import annotations
 

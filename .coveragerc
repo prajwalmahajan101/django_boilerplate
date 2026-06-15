@@ -11,6 +11,20 @@ omit =
     */admin.py
     apps/*/urls.py
     config/*
+    # Dormant modules — ship in-tree for downstream forks, zero in-tree
+    # callers today, omitted so they don't drag the floor. Each carries a
+    # ``Dormant:`` callout in its docstring. The dormant-import AST gate
+    # scheduled for M3 will fail the build if anything under ``apps/``
+    # starts importing one of these without a matching integration test.
+    # Keep this list in sync with the docstring callouts.
+    apps/core/utils/s3.py
+    apps/core/utils/data.py
+    apps/core/utils/filters.py
+    apps/core/utils/valkey.py
+    apps/core/utils/ses.py
+    apps/core/utils/function_logger.py
+    apps/core/utils/aws.py
+    apps/core/middleware/metrics_middleware.py
 
 [report]
 show_missing = True

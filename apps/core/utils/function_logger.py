@@ -10,6 +10,11 @@ times a single explicit block and emits one INFO record on exit.
 ``log_function`` is the per-call decorator variant — useful for
 sprinkling temporary visibility into a service method when chasing a
 bug, without rewriting the call site.
+
+Dormant: ships in-tree for downstream forks but is not on the request path
+today (zero in-tree callers as of M2). Omitted from the coverage gate. The
+dormant-import AST gate scheduled for M3 will fail the build if anything
+under ``apps/`` imports from this module without a matching integration test.
 """
 
 from __future__ import annotations
