@@ -7,6 +7,36 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Coverage gate now enforced in CI: overall floor 75% via `.coveragerc
+  fail_under` + per-package floors `apps/core/` 75% and `apps/accounts/`
+  60% (numbers reflect the honest M2 measurement, not aspirational
+  targets — explicit ratchet plan to 85% across 1.x). The existing
+  `Pytest — e2e + default suite` step is now `make test-cov`; unit and
+  integration tiers stay separate for fast feedback. Per-module wins:
+  `apps/core/permissions.py` 15% → 100%, `rbac_registry.py` 62% → 100%,
+  `responses/paginated.py` 26% → 100%, `views.py` 38% → 97%,
+  `accounts/permissions.py` 0% → 100%; new ~60-test surface across
+  `test_permissions.py`, `test_paginated_response.py`, `test_views.py`,
+  `test_permissions_helper.py`. Overall: 64.03% → 75.24%. Execution
+  log in
+  [docs/m2-coverage-gates-notes.md](docs/m2-coverage-gates-notes.md).
+  v1.0.0 roadmap § M2.
+- Dormant-module policy (lightweight, prose-only — full AST gate is
+  M3). Nine modules carry a `Dormant:` callout in their docstring and
+  are omitted from the coverage gate so they don't drag the floor:
+  `utils/{s3,data,filters,valkey,ses,function_logger,aws,db}.py` and
+  `middleware/metrics_middleware.py`. Each one was verified to have
+  zero in-tree callers (or only dormant callers) at M2; the AST gate
+  scheduled for M3 will fail the build if anything under `apps/`
+  starts importing one of them without a matching integration test.
+- First integration test against a real Valkey backend
+  (`tests/integration/test_valkey_roundtrip.py`): set/get round-trip
+  plus DB-index isolation between the `default` (DB 2) and
+  `rate_limit` (DB 3) caches. CI provisions a `valkey/valkey:7`
+  service container; the test is opt-in via `VALKEY_AVAILABLE=1` and
+  skips cleanly otherwise so local `make test` stays offline. Closes
+  M1's deferred-Valkey scope.
+
 - CI (`.github/workflows/test.yml`) now runs the full quality gate
   that local pre-commit + the `make audit/sbom/test-*` targets
   already enforce: `pre-commit run --all-files` (ruff + pydocstyle +

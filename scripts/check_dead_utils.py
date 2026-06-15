@@ -33,6 +33,12 @@ ALLOWLIST_PATH = Path(__file__).resolve().parent / "dead_utils_allowlist.json"
 
 SCAN_ROOTS = [REPO_ROOT / "apps", REPO_ROOT / "config", REPO_ROOT / "tests"]
 SKIP_DIR_NAMES = {"__pycache__", ".pytest_cache", "migrations"}
+# Test files don't *export* a public surface for callers — pytest discovers
+# their top-level ``test_*`` functions by name. Skipping them here keeps the
+# gate focused on production code; existing class-based tests
+# (``class Foo(SimpleTestCase): def test_x(self)``) were invisible to the
+# gate anyway because the script only walks module-level definitions.
+SKIP_PARENT_DIR_NAMES = {"tests"}
 
 
 def _module_dotted(path: Path) -> str:
@@ -62,6 +68,10 @@ def _iter_python_files(root: Path):
         if any(part in SKIP_DIR_NAMES for part in path.parts):
             continue
         yield path
+
+
+def _is_in_tests_dir(path: Path) -> bool:
+    return any(part in SKIP_PARENT_DIR_NAMES for part in path.parts)
 
 
 def _load_allowlist() -> set[str]:
@@ -95,6 +105,8 @@ def main() -> int:
     allowlist = _load_allowlist()
     orphans: list[tuple[str, Path]] = []
     for path in _iter_python_files(CORE_ROOT):
+        if _is_in_tests_dir(path):
+            continue
         module = _module_dotted(path)
         for name in _collect_public_symbols(path):
             key = f"{module}:{name}"
