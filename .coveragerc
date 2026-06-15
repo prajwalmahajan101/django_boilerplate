@@ -32,7 +32,7 @@ show_missing = True
 skip_covered = False
 skip_empty = True
 precision = 2
-fail_under = 75
+fail_under = 80
 exclude_lines =
     pragma: no cover
     raise NotImplementedError

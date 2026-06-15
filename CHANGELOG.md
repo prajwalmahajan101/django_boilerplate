@@ -6,7 +6,32 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Coverage floors ratcheted to **80%** (was 75% overall, 75% `apps/core/`,
+  60% `apps/accounts/`). `.coveragerc fail_under = 80`; CI floors
+  `apps/core/` 75 → 80 and `apps/accounts/` 60 → 80 in
+  `.github/workflows/test.yml`. Honest-measurement principle from M2
+  applies: post-ratchet measurement is overall **84.09%**, `apps/core/`
+  **80.80%**, `apps/accounts/` **95.60%**. v1.0.0 roadmap § M2.5.
+
 ### Added
+- Tests for the accounts modules deferred out of M2:
+  `accounts/backends.py` 0% → 100%, `accounts/adapters.py` 0% → 100%,
+  `accounts/serializers.py` 54% → 98%, `accounts/views.py` 60% → 97%
+  (only the OAuth-callback happy path stays uncovered — deferred to a
+  dedicated OAuth-coverage PR per the M2.5 plan).
+  `core/utils/log_sanitization.py` 73% → 100% (redaction / depth /
+  truncation branches). New tests:
+  `apps/accounts/tests/test_backends.py`,
+  `apps/accounts/tests/test_serializers.py`,
+  `apps/accounts/tests/test_adapters.py`,
+  `apps/accounts/tests/test_google_login_response.py`,
+  `tests/e2e/test_token_refresh_edges.py`,
+  `tests/e2e/test_logout.py`, `tests/e2e/test_me_patch.py`,
+  `tests/e2e/test_api_key_view_layer.py`,
+  `apps/core/tests/test_log_sanitization.py`. E2E suite now clears DRF
+  throttle buckets between tests so burst-keyed-by-IP fixtures don't
+  leak across cases. v1.0.0 roadmap § M2.5.
 - Coverage gate now enforced in CI: overall floor 75% via `.coveragerc
   fail_under` + per-package floors `apps/core/` 75% and `apps/accounts/`
   60% (numbers reflect the honest M2 measurement, not aspirational
