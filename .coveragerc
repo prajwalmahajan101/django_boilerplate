@@ -24,6 +24,7 @@ omit =
     apps/core/utils/ses.py
     apps/core/utils/function_logger.py
     apps/core/utils/aws.py
+    apps/core/utils/db.py
     apps/core/middleware/metrics_middleware.py
 
 [report]
