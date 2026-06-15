@@ -58,9 +58,13 @@ jobs:
       # Runs ruff (lint+format), pydocstyle, darglint, check-dead-utils,
       # check-layering, check-thread-safety, check-openapi-metadata, and
       # check-stale-refs. Skips the two pip-compile hooks because they
-      # shell out to PyPI to regenerate lockfiles — drift is caught
-      # locally by `make deps-check` (a future CI step once it's wired up;
-      # tracked in v1.0.0 roadmap M2).
+      # shell out to PyPI to regenerate lockfiles. Contributors still get
+      # drift caught locally via the same pip-compile hooks on their own
+      # pre-commit run; a CI-side equivalent (`make deps-check`) is not
+      # deterministic enough today — back-to-back docker runs of
+      # pip-compile pull different transitive versions when PyPI's index
+      # mirror serves stale metadata. Tracked for a later phase when we
+      # either pin to a frozen PyPI snapshot or rework the check.
       - name: pre-commit
         env:
           SKIP: pip-compile-base,pip-compile-dev
@@ -78,8 +82,22 @@ jobs:
       - name: Pytest — integration (DB + cache + broker)
         run: make test-integration
 
-      - name: Pytest — e2e + default suite
-        run: make test
+      # `make test-cov` runs the full default suite (unit + integration +
+      # e2e) under coverage and enforces .coveragerc `fail_under` (75%
+      # at M2). The unit + integration steps above stay for fast feedback
+      # — a failing unit test should surface in <10s, not after the full
+      # coverage run.
+      - name: Pytest — full suite + coverage gate
+        run: make test-cov
+
+      # Per-package floors. Numbers reflect the honest M2 measurement;
+      # ratchet plan documented in CHANGELOG. Adjust here when the
+      # underlying packages move.
+      - name: Coverage — apps/core/ floor (75%)
+        run: coverage report --include='apps/core/*' --fail-under=75
+
+      - name: Coverage — apps/accounts/ floor (60%)
+        run: coverage report --include='apps/accounts/*' --fail-under=60
 
       - name: pip-audit (prod deps)
         run: make audit
