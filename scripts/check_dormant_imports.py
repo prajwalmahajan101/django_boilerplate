@@ -179,10 +179,7 @@ def _resolve_import_names(node: ast.Import | ast.ImportFrom, path: Path, cwd: Pa
             # Out-of-tree relative import; can't resolve confidently.
             return candidates
         prefix_parts = anchor[: len(anchor) - node.level + 1]
-        if base:
-            full_base = ".".join([*prefix_parts, base])
-        else:
-            full_base = ".".join(prefix_parts)
+        full_base = ".".join([*prefix_parts, base]) if base else ".".join(prefix_parts)
     else:
         full_base = base
 
@@ -195,10 +192,18 @@ def _resolve_import_names(node: ast.Import | ast.ImportFrom, path: Path, cwd: Pa
     return candidates
 
 
-def _line_has_waiver(source_lines: list[str], lineno: int) -> bool:
-    if lineno < 1 or lineno > len(source_lines):
-        return False
-    return bool(_WAIVER_RE.search(source_lines[lineno - 1]))
+def _line_has_waiver(source_lines: list[str], start: int, end: int) -> bool:
+    """Return True when any line in the inclusive [start, end] range carries the waiver.
+
+    Ruff-format expands ``from x import (a, b)`` across multiple lines;
+    the AST node's ``lineno`` points at the ``from`` line while a
+    trailing ``# allow-dormant-import: ...`` comment may sit on the
+    line of the imported name. We check the whole span so the waiver
+    works regardless of how the import is formatted.
+    """
+    lo = max(1, start)
+    hi = min(len(source_lines), end)
+    return any(_WAIVER_RE.search(source_lines[lineno - 1]) for lineno in range(lo, hi + 1))
 
 
 def _walk_targets(cwd: Path) -> list[Path]:
@@ -251,7 +256,8 @@ def main() -> int:
             names = _resolve_import_names(node, path, cwd)
             for dotted in names:
                 if dotted in dormant_dotted:
-                    if _line_has_waiver(source_lines, node.lineno):
+                    end = getattr(node, "end_lineno", node.lineno) or node.lineno
+                    if _line_has_waiver(source_lines, node.lineno, end):
                         continue
                     print(
                         f"{rel}:{node.lineno}: dormant import: {dotted} "
