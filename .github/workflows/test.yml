@@ -103,21 +103,21 @@ jobs:
         run: make test-integration
 
       # `make test-cov` runs the full default suite (unit + integration +
-      # e2e) under coverage and enforces .coveragerc `fail_under` (75%
-      # at M2). The unit + integration steps above stay for fast feedback
-      # — a failing unit test should surface in <10s, not after the full
-      # coverage run.
+      # e2e) under coverage and enforces .coveragerc `fail_under` (80%
+      # after M2.5). The unit + integration steps above stay for fast
+      # feedback — a failing unit test should surface in <10s, not after
+      # the full coverage run.
       - name: Pytest — full suite + coverage gate
         run: make test-cov
 
-      # Per-package floors. Numbers reflect the honest M2 measurement;
+      # Per-package floors. Numbers reflect the honest M2.5 measurement;
       # ratchet plan documented in CHANGELOG. Adjust here when the
       # underlying packages move.
-      - name: Coverage — apps/core/ floor (75%)
-        run: coverage report --include='apps/core/*' --fail-under=75
+      - name: Coverage — apps/core/ floor (80%)
+        run: coverage report --include='apps/core/*' --fail-under=80
 
-      - name: Coverage — apps/accounts/ floor (60%)
-        run: coverage report --include='apps/accounts/*' --fail-under=60
+      - name: Coverage — apps/accounts/ floor (80%)
+        run: coverage report --include='apps/accounts/*' --fail-under=80
 
       - name: pip-audit (prod deps)
         run: make audit
