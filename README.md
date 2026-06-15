@@ -4,24 +4,26 @@
 
 A production-shaped Django 6 + DRF starter — opinionated, batteries-on, not yet stress-tested at production scale. Ships with:
 
+- **Resilience layer** — retry, circuit breaker, Valkey-backed
+  throttles with Lua atomic windows, SSRF guard + DNS-rebinding
+  protection, `FernetCipher` crypto, `@log_inbound` / `@log_outbound`
+  audit decorators with structured `error_messages` catalog,
+  Prometheus-ready metrics shim. *Provided by
+  [`resilience-kit`](https://pypi.org/project/resilience-kit/) v0.1.0;
+  the boilerplate adds the envelope + request-id + DRF bridges.*
 - **`apps/core/`** — base classes (`BaseModel`, `BaseService[T]`,
   opt-in `BaseRepository[M]` / `BaseSchema`), typed exception hierarchy
   + DRF handler, structured response envelopes (`SuccessResponse` /
   `ErrorResponse` / `PaginatedResponse`), request-id middleware,
   request/response logging, rate-limit headers, security-headers /
   content-length / selective-CORS middleware, healthcheck lifecycle,
-  resilience primitives (retry + circuit breaker + Valkey-backed
-  throttles with Lua atomic windows), AWS utilities (boto3 thread-local
-  caches, S3, SES), HTTP client with SSRF guard + DNS-rebinding
-  protection, `FernetCipher` free-function crypto + `EncryptedCharField`,
-  `best_effort_atomic` audit-write wrapper, log sanitization,
-  `summarise_body_for_audit` / `serialize_error_body` payload
-  sanitizers, cursor + offset pagination, fire-and-forget Celery
-  dispatch, `@register_task` + `enqueue()` Celery helpers, `@log_inbound`
-  / `@log_outbound` audit decorators with structured `error_messages`
-  catalog, `core.runtime.get_settings`/`require` indirection,
-  `core.testing.reset_all_singletons` test helper, Prometheus-ready
-  metrics shim.
+  AWS utilities (boto3 thread-local caches, S3, SES),
+  `EncryptedCharField`, `best_effort_atomic` audit-write wrapper,
+  log sanitization, `summarise_body_for_audit` /
+  `serialize_error_body` payload sanitizers, cursor + offset
+  pagination, fire-and-forget Celery dispatch, `@register_task` +
+  `enqueue()` Celery helpers, `core.runtime.get_settings`/`require`
+  indirection, `core.testing.reset_all_singletons` test helper.
 - **`apps/accounts/`** — `User` (email login), `Role` / `Permission`
   RBAC, `APIKey` (prefix-indexed, encrypted at rest), JWT via
   `dj-rest-auth`, Google OAuth via `django-allauth`, `RBACBackend`
