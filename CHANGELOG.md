@@ -20,6 +20,16 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   log in [docs/m1-ci-hardening-notes.md](docs/m1-ci-hardening-notes.md).
   v1.0.0 roadmap § M1.
 
+### Security
+- Bumped four transitively-vulnerable packages flagged by the M1
+  pip-audit gate on its first real run: `django` 6.0.5 → 6.0.6
+  (5 PYSEC advisories), `tornado` 6.5.5 → 6.5.7 (CVE-2026-49854),
+  `idna` 3.14 → 3.18 (CVE-2026-45409), `pyjwt` 2.12.1 → 2.13.0
+  (4 PYSEC advisories). All bumps stayed inside existing
+  `requirements/*.in` ranges; no breaking changes; 180 tests still
+  pass. Caught by the same `make audit` step landed alongside; see
+  M1 phase journal for the discovery log.
+
 ### Fixed
 - `FireAndForgetQueue._dropped` increment is now lock-guarded
   (`apps/core/dispatch/fire_and_forget.py`). Without it the
