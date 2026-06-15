@@ -30,8 +30,8 @@ CYCLONEDX_VERSION  := 7.3.0
 #     "apt-get update -qq && apt-cache policy gcc libc6-dev libpq-dev"
 AUDIT_SYSTEM_DEPS := apt-get update -qq && apt-get install -y -qq --no-install-recommends \
 	gcc=4:14.2.0-1 \
-	libc6-dev=2.41-12+deb13u2 \
-	libpq-dev=17.9-0+deb13u1
+	libc6-dev=2.41-12+deb13u3 \
+	libpq-dev=17.10-0+deb13u1
 
 help:  ## Show available targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
