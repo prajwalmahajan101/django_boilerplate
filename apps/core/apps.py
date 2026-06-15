@@ -11,7 +11,9 @@ class CoreConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
 
     def ready(self):
-        from core.utils.db import dispose_all_engines  # allow-dormant-import: atexit cleanup hook; see core/utils/db.py docstring
+        from core.utils.db import (
+            dispose_all_engines,  # allow-dormant-import: atexit cleanup hook; see core/utils/db.py docstring
+        )
 
         atexit.register(dispose_all_engines)
 

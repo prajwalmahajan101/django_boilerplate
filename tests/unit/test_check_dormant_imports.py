@@ -84,9 +84,7 @@ def test_live_import_of_dormant_fails(tmp_path: Path):
         tmp_path,
         dormant_modules={"apps/core/utils/s3.py": DORMANT_MODULE_BODY},
         live_modules={
-            "apps/core/services.py": (
-                '"""Live service."""\nfrom core.utils.s3 import upload\n'
-            ),
+            "apps/core/services.py": ('"""Live service."""\nfrom core.utils.s3 import upload\n'),
         },
     )
     result = _run(tmp_path)
@@ -166,9 +164,7 @@ def test_from_package_import_dormant_submodule_fails(tmp_path: Path):
         tmp_path,
         dormant_modules={"apps/core/utils/s3.py": DORMANT_MODULE_BODY},
         live_modules={
-            "apps/core/services.py": (
-                '"""Live service."""\nfrom core.utils import s3\n'
-            ),
+            "apps/core/services.py": ('"""Live service."""\nfrom core.utils import s3\n'),
         },
     )
     result = _run(tmp_path)
