@@ -43,6 +43,12 @@ you productive fastest.
 - **[celery-topology.md](celery-topology.md)** — queue routing,
   priorities, task time-limits.
 
+## Releases
+
+- **[v1.0.0-roadmap.md](v1.0.0-roadmap.md)** — phase plan (M1 CI →
+  M2 coverage → M3 gates → M4 ADRs → M5 cut) to reach a stable
+  `v1.0.0` matching the fastapi boilerplate's 1.0 quality bar.
+
 ## Operations
 
 - **[configuration.md](configuration.md)** — every env var, settings
