@@ -97,6 +97,28 @@
   policy + the matching AST gate. Will update the roadmap as part
   of M4's docs sweep — out of scope for M1.
 
+## Step 7 — First CI run failed on apt pin staleness
+
+- **P1.** First push of this PR (run 27555057537) failed at
+  `make audit` with `E: Version '2.41-12+deb13u2' for 'libc6-dev'
+  was not found`. Debian had rolled a security update
+  (`+deb13u3`) and unpublished the older patch from the mirror.
+  The pin worked locally because the user's Docker layer cache
+  had `apt-get update` from before the rollover — CI starts cold
+  and hits the live mirror.
+- **Fix.** Re-ran the recapture command already documented in the
+  Makefile comment block above `AUDIT_SYSTEM_DEPS:` and bumped
+  pins: `libc6-dev` 2.41-12+deb13u2 → +deb13u3; `libpq-dev`
+  17.9-0+deb13u1 → 17.10-0+deb13u1; `gcc` unchanged. Same SHA-pinned
+  base image, so reproducibility is intact — only the upstream
+  apt packages moved.
+- **Follow-up for M2 or later.** This will keep happening on every
+  Debian security update. Two non-mutually-exclusive options to log:
+  (a) move to a Debian apt snapshot URL so the pin is immutable;
+  (b) drop the patch suffix and accept "latest patch on Debian
+  stable" as the reproducibility floor. Out of scope here — the
+  one-line bump unblocks M1.
+
 ## Exit
 
 - Branch-protection rule pinned to the old job name
