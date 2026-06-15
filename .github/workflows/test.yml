@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: ruff + django check + makemigrations + pytest (Python ${{ matrix.python-version }})
+    name: pre-commit + audit + sbom + pytest (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -53,13 +53,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements/test.txt
-          pip install ruff==0.6.9
+          pip install pre-commit==3.8.0
 
-      - name: Ruff (lint)
-        run: ruff check .
-
-      - name: Ruff (format check)
-        run: ruff format --check .
+      # Runs ruff (lint+format), pydocstyle, darglint, check-dead-utils,
+      # check-layering, check-thread-safety, check-openapi-metadata, and
+      # check-stale-refs. Skips the two pip-compile hooks because they
+      # shell out to PyPI to regenerate lockfiles — drift is caught
+      # locally by `make deps-check` (a future CI step once it's wired up;
+      # tracked in v1.0.0 roadmap M2).
+      - name: pre-commit
+        env:
+          SKIP: pip-compile-base,pip-compile-dev
+        run: pre-commit run --all-files --show-diff-on-failure
 
       - name: Django system check
         run: python manage.py check
@@ -67,5 +72,17 @@ jobs:
       - name: Makemigrations is up to date (no model drift)
         run: python manage.py makemigrations --check --dry-run
 
-      - name: "Pytest (make test - unit + integration + e2e, skips slow/external)"
+      - name: Pytest — unit (fast, no I/O)
+        run: make test-unit
+
+      - name: Pytest — integration (DB + cache + broker)
+        run: make test-integration
+
+      - name: Pytest — e2e + default suite
         run: make test
+
+      - name: pip-audit (prod deps)
+        run: make audit
+
+      - name: SBOM drift check
+        run: make sbom-diff

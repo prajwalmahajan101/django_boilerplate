@@ -6,6 +6,20 @@ versions adhere to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- CI (`.github/workflows/test.yml`) now runs the full quality gate
+  that local pre-commit + the `make audit/sbom/test-*` targets
+  already enforce: `pre-commit run --all-files` (ruff + pydocstyle +
+  darglint + five AST guards — `check_dead_utils`, `check_layering`,
+  `check_thread_safety`, `check_openapi_metadata`,
+  `check_stale_refs`), `make audit` (pip-audit against
+  `requirements/prod.txt`), `make sbom-diff` (CycloneDX SBOM drift),
+  and `pytest` split into unit / integration / e2e tiers so a flaky
+  e2e doesn't blur a unit regression. Rationale captured in
+  [ADR-0003](docs/decisions/0003-ci-as-quality-gate.md); execution
+  log in [docs/m1-ci-hardening-notes.md](docs/m1-ci-hardening-notes.md).
+  v1.0.0 roadmap § M1.
+
 ### Fixed
 - `FireAndForgetQueue._dropped` increment is now lock-guarded
   (`apps/core/dispatch/fire_and_forget.py`). Without it the

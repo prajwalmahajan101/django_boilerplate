@@ -48,6 +48,12 @@ you productive fastest.
 - **[v1.0.0-roadmap.md](v1.0.0-roadmap.md)** — phase plan (M1 CI →
   M2 coverage → M3 gates → M4 ADRs → M5 cut) to reach a stable
   `v1.0.0` matching the fastapi boilerplate's 1.0 quality bar.
+- **[m1-ci-hardening-notes.md](m1-ci-hardening-notes.md)** — live
+  log from M1 (CI hardening): what shipped, what got deferred, and
+  the M3 scope reduction discovered along the way.
+- **[decisions/](decisions/)** — Architecture Decision Records.
+  0001 fire-and-forget dispatch · 0002 exception/HTTP registry ·
+  0003 CI as the production quality gate.
 
 ## Operations
 
