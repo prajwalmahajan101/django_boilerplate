@@ -119,6 +119,27 @@
   stable" as the reproducibility floor. Out of scope here — the
   one-line bump unblocks M1.
 
+## Step 8 — Second CI run: the gate worked (11 CVEs caught)
+
+- **PRAISE.** With apt pins fixed, `make audit` ran clean and
+  surfaced 11 real CVEs the project was carrying: django 6.0.5
+  (5 advisories — fix 6.0.6), tornado 6.5.5 (CVE-2026-49854,
+  fix 6.5.6), idna 3.14 (CVE-2026-45409, fix 3.15), pyjwt 2.12.1
+  (4 advisories — fix 2.13.0). Exactly the class of finding the M1
+  plan exists to catch, and exactly the reason M1 had to run on
+  every PR rather than being a manual `make audit` ritual.
+- **Decision: fix in this PR, not a follow-up.** Once M1 merges,
+  every subsequent PR will hit the same gate, so main would land
+  with its own gate red. All four bumps are patch-level security
+  upgrades within the existing `.in` ranges, so the fix is just
+  re-running `pip-compile --upgrade-package` for each layer; no
+  `.in` edits needed. SBOM regenerated; full test suite still 180
+  passed.
+- **Discovery: lockfile regeneration with `--strip-extras` warning.**
+  pip-tools 7.5.3 warns that `--strip-extras` becomes default in
+  8.0.0. Not blocking, but a flag to pin in the next `pip-tools`
+  bump. Logged for M2.
+
 ## Exit
 
 - Branch-protection rule pinned to the old job name
