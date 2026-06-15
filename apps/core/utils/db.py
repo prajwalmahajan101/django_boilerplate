@@ -10,6 +10,17 @@ Usage:
     engine = get_engine(build_url(host="db.example.com", name="analytics"))
     result = execute_query(engine, "SELECT count(*) FROM events")
     print(result.scalar)
+
+Dormant: ``dispose_all_engines`` is wired as an atexit hook from
+``apps/core/apps.py``, but every other public symbol
+(``build_url``, ``get_engine``, ``dispose_engine``, ``execute_query``,
+``ping_engine``, ``SqlRowSet``) has zero in-tree callers as of M2 —
+this module is downstream-fork extension surface for projects that
+query *external* SQLAlchemy databases. Omitted from the coverage
+gate. The dormant-import AST gate scheduled for M3 will fail the
+build if anything under ``apps/`` (besides the existing apps.py
+shutdown hook) starts importing from this module without a matching
+integration test.
 """
 
 from __future__ import annotations
