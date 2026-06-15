@@ -14,7 +14,6 @@ from accounts.serializers import CustomJWTSerializer, GoogleCallbackSerializer
 from django.test import override_settings
 from rest_framework.exceptions import ValidationError
 
-
 # ---------- GoogleCallbackSerializer.validate_redirect_uri ----------------
 
 
@@ -38,9 +37,7 @@ def test_redirect_uri_rejected_when_setting_missing(settings):
     assert "not configured" in str(serializer.errors["redirect_uri"][0])
 
 
-@override_settings(
-    GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS=["https://app.example.com/cb"]
-)
+@override_settings(GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS=["https://app.example.com/cb"])
 def test_redirect_uri_rejected_when_not_in_allowlist():
     serializer = GoogleCallbackSerializer(
         data={"code": "abc", "redirect_uri": "https://evil.example.com/cb"}
@@ -49,22 +46,16 @@ def test_redirect_uri_rejected_when_not_in_allowlist():
     assert "not permitted" in str(serializer.errors["redirect_uri"][0])
 
 
-@override_settings(
-    GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS=["https://app.example.com/cb"]
-)
+@override_settings(GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS=["https://app.example.com/cb"])
 def test_redirect_uri_passes_when_in_allowlist():
     serializer = GoogleCallbackSerializer(
         data={"code": "abc", "redirect_uri": "https://app.example.com/cb"}
     )
     assert serializer.is_valid(), serializer.errors
-    assert serializer.validated_data["redirect_uri"] == (
-        "https://app.example.com/cb"
-    )
+    assert serializer.validated_data["redirect_uri"] == ("https://app.example.com/cb")
 
 
-@override_settings(
-    GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS=["https://app.example.com/cb"]
-)
+@override_settings(GOOGLE_OAUTH_ALLOWED_REDIRECT_URIS=["https://app.example.com/cb"])
 def test_redirect_uri_validate_method_returns_value_unchanged():
     serializer = GoogleCallbackSerializer()
     assert serializer.validate_redirect_uri("https://app.example.com/cb") == (
@@ -140,9 +131,7 @@ def test_jwt_to_representation_adds_expirations_when_present():
 
 
 def test_jwt_to_representation_omits_expirations_when_absent():
-    serializer = CustomJWTSerializer(
-        instance={"access": "a", "refresh": "r", "user": None}
-    )
+    serializer = CustomJWTSerializer(instance={"access": "a", "refresh": "r", "user": None})
     data = serializer.data
     assert "access_expiration" not in data
     assert "refresh_expiration" not in data

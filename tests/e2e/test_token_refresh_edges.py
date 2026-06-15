@@ -10,7 +10,6 @@ from __future__ import annotations
 import pytest
 from rest_framework_simplejwt.tokens import RefreshToken
 
-
 URL = "/api/accounts/token/refresh/"
 
 

@@ -48,17 +48,13 @@ def test_delete_existing_key_returns_200(superuser_role_client, api_key):
 
 @pytest.mark.django_db
 def test_revoke_missing_pk_returns_404(superuser_role_client):
-    resp = superuser_role_client.post(
-        "/api/accounts/api-keys/999999/revoke/"
-    )
+    resp = superuser_role_client.post("/api/accounts/api-keys/999999/revoke/")
     assert resp.status_code == 404
 
 
 @pytest.mark.django_db
 def test_revoke_first_call_returns_revoked_message(superuser_role_client, api_key):
-    resp = superuser_role_client.post(
-        f"/api/accounts/api-keys/{api_key.pk}/revoke/"
-    )
+    resp = superuser_role_client.post(f"/api/accounts/api-keys/{api_key.pk}/revoke/")
     assert resp.status_code == 200
     assert resp.json()["message"] == "API key revoked."
 
