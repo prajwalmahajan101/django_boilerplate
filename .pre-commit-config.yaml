@@ -115,3 +115,16 @@ repos:
         language: system
         files: '(^docs/.*\.md$)|(^CLAUDE\.md$)|(^README\.md$)|(^apps/.*/CLAUDE\.md$)|(^scripts/stale_refs\.yaml$)'
         pass_filenames: false
+
+      # Block silent re-activation of a dormant module. The dormant set
+      # (apps/core/utils/{s3,data,filters,valkey,ses,function_logger,
+      # aws,db}.py + apps/core/middleware/metrics_middleware.py) is
+      # sourced from .coveragerc and cross-checked against each file's
+      # ``Dormant:`` docstring marker. Escape hatch:
+      # ``# allow-dormant-import: <reason>`` on the import's start line.
+      - id: check-dormant-imports
+        name: forbid imports of dormant modules from live code
+        entry: python scripts/check_dormant_imports.py
+        language: system
+        files: ^(apps|config)/.*\.py$|^\.coveragerc$
+        pass_filenames: false
