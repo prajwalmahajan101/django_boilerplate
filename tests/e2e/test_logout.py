@@ -9,8 +9,7 @@ token" from "this user's token".
 from __future__ import annotations
 
 import pytest
-from rest_framework_simplejwt.tokens import OutstandingToken, RefreshToken
-
+from rest_framework_simplejwt.tokens import RefreshToken
 
 URL = "/api/accounts/logout/"
 

@@ -49,9 +49,7 @@ def test_has_perm_returns_false_for_codename_without_underscore(backend):
 
 
 def test_has_perm_returns_false_for_unknown_action_prefix(backend, monkeypatch):
-    monkeypatch.setattr(
-        "accounts.backends.resource_for", lambda app, model: "ACCOUNT"
-    )
+    monkeypatch.setattr("accounts.backends.resource_for", lambda app, model: "ACCOUNT")
     assert backend.has_perm(_user(), "accounts.frobnicate_user") is False
 
 
@@ -61,17 +59,13 @@ def test_has_perm_returns_false_for_unregistered_resource(backend, monkeypatch):
 
 
 def test_has_perm_returns_true_when_role_matches(backend, monkeypatch):
-    monkeypatch.setattr(
-        "accounts.backends.resource_for", lambda app, model: "ACCOUNT"
-    )
+    monkeypatch.setattr("accounts.backends.resource_for", lambda app, model: "ACCOUNT")
     user = _user(role_match=True)
     assert backend.has_perm(user, "accounts.view_user") is True
 
 
 def test_has_perm_returns_false_when_role_does_not_match(backend, monkeypatch):
-    monkeypatch.setattr(
-        "accounts.backends.resource_for", lambda app, model: "ACCOUNT"
-    )
+    monkeypatch.setattr("accounts.backends.resource_for", lambda app, model: "ACCOUNT")
     user = _user(role_match=False)
     assert backend.has_perm(user, "accounts.view_user") is False
 
@@ -89,26 +83,18 @@ def test_has_module_perms_short_circuits_for_superuser_role(backend):
     user.roles.filter.assert_not_called()
 
 
-def test_has_module_perms_returns_false_for_app_without_resources(
-    backend, monkeypatch
-):
+def test_has_module_perms_returns_false_for_app_without_resources(backend, monkeypatch):
     monkeypatch.setattr("accounts.backends.app_resources", lambda app: [])
     assert backend.has_module_perms(_user(), "ghost") is False
 
 
 def test_has_module_perms_returns_true_when_role_matches(backend, monkeypatch):
-    monkeypatch.setattr(
-        "accounts.backends.app_resources", lambda app: ["ACCOUNT", "ROLE"]
-    )
+    monkeypatch.setattr("accounts.backends.app_resources", lambda app: ["ACCOUNT", "ROLE"])
     user = _user(role_match=True)
     assert backend.has_module_perms(user, "accounts") is True
 
 
-def test_has_module_perms_returns_false_when_role_does_not_match(
-    backend, monkeypatch
-):
-    monkeypatch.setattr(
-        "accounts.backends.app_resources", lambda app: ["ACCOUNT"]
-    )
+def test_has_module_perms_returns_false_when_role_does_not_match(backend, monkeypatch):
+    monkeypatch.setattr("accounts.backends.app_resources", lambda app: ["ACCOUNT"])
     user = _user(role_match=False)
     assert backend.has_module_perms(user, "accounts") is False

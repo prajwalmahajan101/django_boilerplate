@@ -15,7 +15,6 @@ from core.utils.log_sanitization import (
 )
 from django.test import override_settings
 
-
 # ---------- top-level switches -------------------------------------------
 
 
@@ -46,7 +45,7 @@ def test_bytes_summarised_not_inlined():
 
 def test_unknown_object_falls_back_to_repr():
     class Foo:
-        def __str__(self):  # noqa: D401
+        def __str__(self):
             return "foo-repr"
 
     assert sanitize_for_log(Foo()) == "foo-repr"

@@ -24,6 +24,7 @@ from accounts.adapters import (
     role_repository,
 )
 from accounts.models import Role
+
 from tests.factories import UserFactory
 
 
@@ -46,9 +47,7 @@ def test_assign_default_roles_warns_when_no_defaults(user_factory, caplog):
     # No Role rows exist with is_default=True -> warning path.
     with caplog.at_level("WARNING", logger="accounts.adapters"):
         assign_default_roles(user)
-    assert any(
-        "No default roles configured" in rec.message for rec in caplog.records
-    )
+    assert any("No default roles configured" in rec.message for rec in caplog.records)
     assert user.roles.count() == 0
 
 
