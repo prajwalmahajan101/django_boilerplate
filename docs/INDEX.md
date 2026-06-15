@@ -73,6 +73,48 @@ you productive fastest.
 - **[testing.md](testing.md)** — pytest layout, fixtures, marker
   conventions, integration-test conftest split.
 
+## Dormant modules
+
+Nine modules ship in-tree for downstream forks but have zero
+request-path callers today. The dormant policy has two halves:
+
+1. **Coverage gate** — `.coveragerc`'s `[run] omit` list excludes
+   each module, so the gate floor (80% overall as of M2.5) reflects
+   only live code.
+2. **Import gate** — `scripts/check_dormant_imports.py` walks every
+   `.py` under `apps/` + `config/` at pre-commit time and fails on
+   any `Import` / `ImportFrom` node that resolves to a dormant
+   module. The escape hatch is a same-line
+   `# allow-dormant-import: <reason>` comment — reserve it for
+   narrow seams (atexit hooks, integration tests, one-shot
+   management commands), not for re-activating a module on the
+   request path. To activate a dormant module properly, follow the
+   per-module recipe below.
+
+The two halves are cross-checked on every run: each `omit` path
+must carry a `Dormant:` (or `Dormant (transitively):`) marker in
+its module docstring, and vice versa. A mismatch exits the gate
+with code 2 before any imports are walked.
+
+### The set + activation procedure
+
+| Module | Activates by | Test to add when activating |
+| --- | --- | --- |
+| `core/utils/s3.py` | Importing `S3Client` / helpers from a service or task; AWS creds in env | Integration test using `moto` to mock S3 round-trips |
+| `core/utils/data.py` | Importing the dataframe helpers from a service that ingests tabular data | Unit test covering each helper against fixture rows |
+| `core/utils/filters.py` | Importing `apply_filters` from a list view's `get_queryset` | E2E test asserting a filtered list view returns only matching rows |
+| `core/utils/valkey.py` | Importing `ValkeyClient` from a service or middleware that needs raw Valkey access (the resilience kit covers cache + throttle today) | Integration test gated on `VALKEY_AVAILABLE=1`, mirroring `tests/integration/test_valkey_roundtrip.py` |
+| `core/utils/ses.py` | Importing `send_email` from a notification service | Integration test using `moto` or a fake SES client |
+| `core/utils/function_logger.py` | Decorating a hot-path function with `@log_calls` | Unit test confirming the wrapper emits the expected `extra=` payload |
+| `core/utils/aws.py` | Becomes live transitively when `s3.py` or `ses.py` activates; no direct activation expected | Test added with the activating sibling |
+| `core/utils/db.py` | Importing `get_engine` / `execute_query` from a service that needs raw SQL (the ORM covers the standard path) | Integration test against the project's test Postgres asserting cache + timeout behaviour |
+| `core/middleware/metrics_middleware.py` | Adding the class to `MIDDLEWARE` in `config/settings/base.py` and setting `METRICS_ENABLED=True` | E2E test asserting `X-Request-Duration` (or chosen metric) on a sample response |
+
+When activating: remove the `omit` entry from `.coveragerc`,
+remove (or rewrite) the `Dormant:` line from the module docstring,
+add the test row above, and the import gate will then require
+genuine coverage on the next PR rather than an escape comment.
+
 ## Reference
 
 - **[exceptions.md](exceptions.md)** — typed hierarchy, auto-derived
