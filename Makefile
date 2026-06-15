@@ -4,6 +4,11 @@
 # mutate anything (regenerating requirements, writing SBOM, etc.) are
 # explicitly named with an action verb.
 
+# sbom-diff uses bash process substitution `<(...)`. Make on Ubuntu /
+# Debian defaults to /bin/sh = dash, which parses `(` as a syntax
+# error. Pin bash explicitly so recipes work on every CI runner.
+SHELL := /bin/bash
+
 .PHONY: help audit audit-all check deps-check sbom sbom-diff install-hooks \
 	test test-unit test-integration test-e2e test-slow test-external \
 	test-cov test-cov-html test-cov-open coverage-clean

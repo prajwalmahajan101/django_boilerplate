@@ -140,6 +140,25 @@
   8.0.0. Not blocking, but a flag to pin in the next `pip-tools`
   bump. Logged for M2.
 
+## Step 9 — Third CI run: dash vs bash in `make sbom-diff`
+
+- **P1.** Third run failed at `make sbom-diff` with
+  `/bin/sh: 11: Syntax error: "(" unexpected`. The recipe uses
+  bash process substitution `<(jq …) <(jq …)` to diff the two
+  SBOMs. Make on Ubuntu CI runs recipes through `/bin/sh = dash`,
+  which doesn't parse `<(...)`. Local laptops with `bash` as
+  `/bin/sh` (older Arch / some macOS setups) never saw this.
+- **Fix.** Added `SHELL := /bin/bash` at the top of the Makefile —
+  pins recipe shell to bash for every target so this class of bug
+  can't recur. One-liner; verified locally with `make sbom-diff`
+  → "sbom in sync."
+- **Discovery.** This is a class of bug `make audit/sbom/test`
+  alone can't catch — only running the Makefile under CI's exact
+  shell exposes it. Ironically, this is the very justification
+  for ADR-0003 (CI as the production quality gate): the gate
+  itself caught a Makefile portability bug the local environment
+  was hiding.
+
 ## Exit
 
 - Branch-protection rule pinned to the old job name
