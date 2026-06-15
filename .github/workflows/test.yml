@@ -29,6 +29,20 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # Used by the opt-in integration tests that exercise real
+      # django-valkey backends (see tests/integration/test_valkey_*).
+      # The default test suite still runs against LocMemCache; this
+      # container only gets traffic when VALKEY_AVAILABLE=1 is set
+      # for the pytest step (see env below).
+      valkey:
+        image: valkey/valkey:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
       DJANGO_ENV: test
       DJANGO_SETTINGS_MODULE: config.settings.test
@@ -38,6 +52,12 @@ jobs:
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_PORT: "5432"
       SECRET_KEY: ${{ secrets.TEST_DJANGO_SECRET_KEY }}
+      # Opt-in flag for the real-Valkey integration tests. Without this,
+      # those tests skip; with it, they swap CACHES via override_settings
+      # for their own scope and round-trip against the service container.
+      VALKEY_AVAILABLE: "1"
+      VALKEY_HOST: 127.0.0.1
+      VALKEY_PORT: "6379"
 
     steps:
       - uses: actions/checkout@v4
