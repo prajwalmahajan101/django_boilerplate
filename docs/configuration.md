@@ -195,7 +195,7 @@ lookup, the registration call is the source of truth.
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `USE_X_FORWARDED_FOR` | No | `false` | Trust X-Forwarded-For header |
-| `SSRF_BLOCK_PRIVATE_IPS` | No | `true` | Block outbound HTTP requests to private / loopback / link-local / reserved IPs. Enforced inside `core.utils.http_client.make_http_request` via `_assert_public_url`. Automatically disabled in `test` settings so the test suite can hit local mock servers; keep `true` in dev/prod. |
+| `SSRF_BLOCK_PRIVATE_IPS` | No | `true` | Block outbound HTTP requests to private / loopback / link-local / reserved IPs. Enforced by `resilience_kit.ssrf.assert_public_url` (kit-side since M7 — see [ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md)). Automatically disabled in `test` settings so the test suite can hit local mock servers; keep `true` in dev/prod. |
 
 ### Valkey Sentinel (prepared, not deployed)
 

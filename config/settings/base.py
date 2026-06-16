@@ -343,8 +343,9 @@ USE_X_FORWARDED_FOR = os.getenv("USE_X_FORWARDED_FOR", "False") == "True"
 
 # --------------------------------------------------------------------------
 # SSRF defense — reject outbound URLs that resolve to private/reserved IP space.
-# Applied by core.utils.http_client._assert_public_url and partners.models
-# field validators. Override to False in tests that use localhost mock servers.
+# Applied by resilience_kit.ssrf.assert_public_url (invoked by
+# AsyncAPIClient before every outbound call) and by domain-app field
+# validators. Override to False in tests that use localhost mock servers.
 # --------------------------------------------------------------------------
 SSRF_BLOCK_PRIVATE_IPS = os.getenv("SSRF_BLOCK_PRIVATE_IPS", "True") == "True"
 
@@ -725,7 +726,7 @@ SECURE_BROWSER_XSS_FILTER = True
 
 # --------------------------------------------------------------------------
 # Outbound URL allow-list (defence in depth alongside the SSRF guard in
-# core.utils.http_client._assert_public_url). When non-empty, an outbound
+# resilience_kit.ssrf.assert_public_url). When non-empty, an outbound
 # HTTP call to a URL whose hostname doesn't match (suffix or exact) an
 # entry is rejected. Empty list = permissive (no allow-listing).
 # ``["*"]`` is also permissive — used as the local-dev default so the test

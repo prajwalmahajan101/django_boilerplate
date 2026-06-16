@@ -37,3 +37,9 @@ patterns:
 
   - pattern: 'bulk_update_by_filter'
     replacement: 'bulk_update_by_filter was removed from BaseRepository — it bypassed full_clean(), auto_now, updated_by, and signals. Reach through cls._manager().filter(...).update(...) explicitly at the call site if you genuinely need to bypass audit, so reviewers can see the escape hatch.'
+
+  - pattern: 'core\.resilience\.(registry|decorators|retry|cache\.provider|circuit_breaker\.provider)'
+    replacement: 'The in-tree apps/core/resilience/ package was removed in M7 (PR #8). Import from resilience-kit instead: `from resilience_kit import resilient, retry_on_failure, circuit_breaker, registry`. See ADR-0004 for the migration story.'
+
+  - pattern: 'core\.utils\.http_client'
+    replacement: 'apps/core/utils/http_client was removed in M7. Use `resilience_kit.http_client.AsyncAPIClient` for outbound HTTP; the SSRF / breaker / retry / audit layers are kit-owned. See ADR-0004.'

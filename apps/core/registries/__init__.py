@@ -11,10 +11,10 @@ source. Two registries today:
   installs circuit-breaker + retry policy for a service name that
   ``@resilient("name")`` can then bind to.
 
-The underlying implementations live next to their consumers
-(``core.rbac_registry`` and ``core.resilience.registry``) for code-
-locality reasons; this package is the canonical extension-point
-surface that ``docs/adding-a-new-app.md`` references.
+RBAC's implementation lives at ``core.rbac_registry`` (in-tree); the
+resilience registry is owned by ``resilience_kit`` since M7 (see
+ADR-0004) and re-exported here. This package is the canonical
+extension-point surface that ``docs/adding-a-new-app.md`` references.
 
 Usage::
 

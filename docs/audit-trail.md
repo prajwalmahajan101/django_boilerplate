@@ -133,9 +133,10 @@ single queryable table, asynchronously, with no request-path latency.
   status, duration, the authenticated principal, the request and
   response bodies (after sanitization), and the `request_id` for
   correlation.
-- **Outbound** — `core.utils.http_client.make_http_request` emits a
-  matching audit entry for every outbound call via
-  `core/api_log/outbound.py`: URL host, method, status, duration, the
+- **Outbound** — `resilience_kit.http_client.AsyncAPIClient` (since M7;
+  see [ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md))
+  emits a matching audit entry for every outbound call via the
+  `core/api_log/outbound.py` decorator: URL host, method, status, duration, the
   outbound payload, and the upstream response body. Failures (timeout,
   SSRF refusal, non-2xx) go through
   `core.exceptions.utils.normalize_outbound_exception` so the row has

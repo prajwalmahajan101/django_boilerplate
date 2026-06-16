@@ -1,9 +1,10 @@
 """``@log_outbound`` — audit decorator for service methods calling http_client.
 
 Wraps a service method that issues an outbound HTTP call. The
-decorator inspects the returned :class:`core.utils.http_client.HttpResponse`
-(or the raised exception) and emits one ``ApiLog`` row per call. The
-service method's signature is unchanged.
+decorator inspects the returned response object (or the raised
+exception — including ``resilience_kit.exceptions.TransientError``
+and ``ExternalTimeoutError``) and emits one ``ApiLog`` row per call.
+The service method's signature is unchanged.
 
 Usage::
 

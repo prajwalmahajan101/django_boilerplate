@@ -5,7 +5,7 @@ Public surface:
 * :func:`log_inbound` — DRF view decorator that audits the request.
 * :func:`log_outbound` — service-method decorator that audits the
   outbound HTTP call (consumes metadata published by
-  ``apps.core.utils.http_client``).
+  ``resilience_kit.http_client.AsyncAPIClient``).
 * :class:`ApiLog` — the audit row model.
 * :data:`Direction` — enum of audit directions.
 
