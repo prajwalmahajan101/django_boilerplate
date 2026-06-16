@@ -104,8 +104,9 @@ class ExternalTimeoutError(ExternalServiceError):
         resilience layer can apply timeout-specific backoff.
     Maps to: HTTP 502 (registered in ``handler.py``).
     Error code: ``EXTERNAL_TIMEOUT``.
-    Typical caller: ``core.utils.http_client`` and any ``@resilient``
-        function whose underlying client raises a timeout.
+    Typical caller: ``resilience_kit.http_client.AsyncAPIClient`` and
+        any ``@resilient`` function whose underlying client raises a
+        timeout.
     """
 
     default_message = "External service call timed out."
@@ -163,11 +164,11 @@ class SESException(ExternalServiceError):
 class OutboundURLNotAllowedError(InfrastructureError):
     """Raised when an outbound URL fails SSRF / allow-list validation.
 
-    Raised when: the SSRF guard in ``apps/core/utils/http_client/_client.py``
-        rejects a URL because the scheme is not http(s), the hostname
-        is missing, DNS does not resolve (strict mode), the resolved
-        address is non-public (RFC1918, loopback, link-local, etc.),
-        or the host is not in ``OUTBOUND_URL_ALLOWLIST``.
+    Raised when: the SSRF guard in ``resilience_kit.ssrf`` rejects a URL
+        because the scheme is not http(s), the hostname is missing,
+        DNS does not resolve (strict mode), the resolved address is
+        non-public (RFC1918, loopback, link-local, etc.), or the host
+        is not in ``OUTBOUND_URL_ALLOWLIST``.
     Maps to: HTTP 400 — the default assumes the URL ultimately came
         from caller-supplied input (request payload, admin form),
         making 400 the right code. Services that pass an internally
@@ -175,8 +176,9 @@ class OutboundURLNotAllowedError(InfrastructureError):
         ``status_code=502`` on the spot, or register a different code
         in their ``AppConfig.ready()``.
     Error code: ``OUTBOUND_URL_NOT_ALLOWED``.
-    Typical caller: ``_assert_url_allowlisted`` and ``_assert_public_url``
-        in ``apps/core/utils/http_client/_client.py``.
+    Typical caller: ``assert_allowed_url`` / ``assert_public_url`` in
+        ``resilience_kit.ssrf`` (invoked by ``AsyncAPIClient`` before
+        every outbound request).
 
     Classified under :class:`InfrastructureError` (not the repository
     family) because the failure originates in the outbound-call layer,

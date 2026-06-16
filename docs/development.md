@@ -173,23 +173,23 @@ class MyModelListCreateView(APIView):
 ### Making External Service Calls
 
 ```python
-from core.resilience.decorators import resilient
-from core.utils.http_client import make_http_request
+from resilience_kit import resilient
+from resilience_kit.http_client import AsyncAPIClient
 
 @resilient("my_external_service")
-def call_external_api(data):
-    response = make_http_request(
+async def call_external_api(data):
+    client = AsyncAPIClient(service="my_external_service")
+    response = await client.request(
         method="POST",
         url="https://api.external.com/endpoint",
-        json_body=data,
-        timeout=30,
+        json=data,
     )
-    return response.body
+    return response.text
 ```
 
 Register custom resilience config in `AppConfig.ready()` if defaults aren't suitable:
 ```python
-from core.resilience.registry import registry
+from resilience_kit import registry
 
 class MyAppConfig(AppConfig):
     def ready(self):
