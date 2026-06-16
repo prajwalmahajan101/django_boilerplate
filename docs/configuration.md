@@ -39,7 +39,7 @@ Production settings enforce at startup:
 |---|---|---|---|
 | `DJANGO_ENV` | Yes | -- | Environment: `local`, `dev`, `prod`, `test` |
 | `SECRET_KEY` | Yes | -- | Django secret key for signing |
-| `FIELD_ENCRYPTION_KEY` | Required in dev/prod | `SECRET_KEY` (local/test only) | Separate key for EncryptedCharField (partner credentials). Missing in `dev`/`prod` raises `ImproperlyConfigured` at startup; fallback to `SECRET_KEY` applies only under `DEBUG=True`. |
+| `FIELD_ENCRYPTION_KEY` | Required in dev/prod | `SECRET_KEY` (local/test only) | Separate key for `EncryptedCharField` (partner credentials). The field is now provided by `resilience-kit` and re-exported from `apps/core/base/fields.py` (see [ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md)); production semantics unchanged. Missing in `dev`/`prod` raises `ImproperlyConfigured` at startup; fallback to `SECRET_KEY` applies only under `DEBUG=True`. |
 | `DEBUG` | No | `False` | Debug mode (forced False in prod) |
 | `ALLOWED_HOSTS` | No | `localhost,127.0.0.1` | Comma-separated allowed hosts |
 | `CSRF_TRUSTED_ORIGINS` | No | -- | Comma-separated trusted origins for CSRF |
@@ -136,6 +136,18 @@ If set to `*`, enables `CORS_ALLOW_ALL_ORIGINS=True` (blocked in production).
 | `RESILIENCE_RETRY_MAX_ATTEMPTS` | No | `3` | Max retry attempts |
 | `RESILIENCE_RETRY_WAIT_MIN` | No | `1` | Min backoff (seconds) |
 | `RESILIENCE_RETRY_WAIT_MAX` | No | `10` | Max backoff (seconds) |
+
+The boilerplate-side names above feed the `RESILIENCE` dict in
+`config/settings/base.py`. The kit (see
+[ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md))
+also accepts direct overrides via `RESILIENCE_DEFAULTS__*`
+(double-underscore drills into the nested `defaults` block) and
+`RESILIENCE_*` for the top-level keys — these win over the dict.
+For retired env-var names (the M8 migration dropped
+`RATE_LIMIT_*` semantics in favour of the kit's), wire a translator
+with `resilience_kit.adapters.django.legacy_env_alias()` from your
+project's settings module; the boilerplate ships no translations
+by default.
 
 #### Per-service breakers
 
@@ -235,7 +247,7 @@ From highest to lowest priority:
 
 ## Field-encryption key rotation
 
-`FIELD_ENCRYPTION_KEY` is the symmetric Fernet key used by `EncryptedCharField` (`apps/core/base/fields.py`). It is read once per process and cached via `lru_cache(maxsize=1)`, and rotation today requires brief downtime — there is **no multi-key reader window**. This is a deliberate trade-off until production traffic exists; see "When to add the multi-key reader" below.
+`FIELD_ENCRYPTION_KEY` is the symmetric Fernet key used by `EncryptedCharField` (`apps/core/base/fields.py` re-exports the field from `resilience_kit.adapters.django.fields` since M8 — see [ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md)). It is read once per process and cached via `lru_cache(maxsize=1)`, and rotation today requires brief downtime — there is **no multi-key reader window**. This is a deliberate trade-off until production traffic exists; see "When to add the multi-key reader" below. The rotation procedure below is unchanged by the M8 kit migration: ciphertext shape and the lru-cached read are kit-side responsibilities the boilerplate does not override.
 
 ### When to rotate
 
