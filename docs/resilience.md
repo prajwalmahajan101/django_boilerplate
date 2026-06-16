@@ -34,14 +34,21 @@ stateDiagram-v2
 
 ### Backend Selection (Provider Pattern)
 
+> **Implementation note.** Since M7 the breaker backends are
+> owned by `resilience-kit` (see
+> [ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md)).
+> The diagram below describes the kit-internal behaviour; the
+> boilerplate consumes it via `@resilient(...)` / `@circuit_breaker(...)`
+> and `resilience_kit.registry`.
+
 ```mermaid
 flowchart TD
-    A([get_registry called]) --> B{Singleton\nalready created?}
-    B -- yes --> C([Return cached registry])
-    B -- no --> D[Try ValkeyRegistry\nconnect + SCRIPT LOAD Lua]
+    A([registry resolves breaker]) --> B{Singleton\nalready created?}
+    B -- yes --> C([Return cached breaker])
+    B -- no --> D[Try Valkey backend\nconnect + SCRIPT LOAD Lua]
     D --> E{Valkey\navailable?}
-    E -- yes --> F([ValkeyRegistry\ndistributed, shared across workers])
-    E -- no --> G([PyBreakerRegistry\nper-process, in-memory fallback])
+    E -- yes --> F([Valkey-backed breaker\ndistributed, shared across workers])
+    E -- no --> G([PyBreaker fallback\nper-process, in-memory])
 ```
 
 **Valkey backend** (preferred):
@@ -118,21 +125,24 @@ RESILIENCE_DEFAULTS = {
 Per-service overrides via the registry:
 
 ```python
-from core.resilience.registry import registry
+from resilience_kit import registry
 
 registry.register_service("partner_api", {
     "circuit_breaker": {"fail_max": 3, "reset_timeout": 60},
 })
 ```
 
+The boilerplate's `apps/core/apps.py::CoreConfig._register_resilience_services()`
+is the canonical registration site — see [ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md).
+
 ### Usage
 
 ```python
-from core.resilience.decorators import circuit_breaker
+from resilience_kit import circuit_breaker
 
 @circuit_breaker("partner_api")
-def call_partner(url, data):
-    return make_http_request("POST", url, json_body=data)
+def call_partner(client, url, data):
+    return client.post(url, json=data)
 ```
 
 ---
@@ -197,7 +207,7 @@ RESILIENCE_DEFAULTS = {
 ### Usage
 
 ```python
-from core.resilience.retry import retry_on_failure
+from resilience_kit import retry_on_failure
 
 @retry_on_failure("external_db")
 def fetch_external_record(record_id):
@@ -247,7 +257,7 @@ sequenceDiagram
 ```
 
 ```python
-from core.resilience.decorators import resilient
+from resilience_kit import resilient
 
 @resilient("s3")
 def upload_document(data, bucket, key):
@@ -449,14 +459,18 @@ Separation ensures rate limiting operations cannot evict application cache entri
 ### Cache Provider
 
 ```python
-from core.resilience.cache.provider import get_cache
+from django.core.cache import caches
 
-cache = get_cache("default")  # or "rate_limit"
+cache = caches["default"]  # or "rate_limit"
 cache.set("key", "value", timeout=300)
 value = cache.get("key")
 ```
 
-The provider is a lazy singleton per alias. It tries Valkey first, falls back to in-memory.
+Cache aliases are configured in `config/settings/base.py` to use
+the resilience-kit-backed Valkey backend by default with
+`InMemoryCacheBackend` fall-open semantics (kit-internal). The
+Django cache API is the public boilerplate surface; the kit wires
+the implementation.
 
 ### Fail-Open Behavior
 
@@ -494,39 +508,44 @@ See also [thread-safety.md](thread-safety.md) — the provider singletons per al
 
 ## HTTP Client
 
-For external HTTP calls, use the built-in resilient HTTP client:
+For external HTTP calls, use the resilience-kit HTTP client. It
+wires SSRF + DNS-pin + breaker + retry + audit around a shared
+`httpx.AsyncClient`:
 
 ```python
-from core.utils.http_client import make_http_request
+from resilience_kit.http_client import AsyncAPIClient
 
-response = make_http_request(
+client = AsyncAPIClient(service="partner_api")
+response = await client.request(
     method="POST",
     url="https://api.partner.com/push",
     headers={"X-Partner-ID": "123"},
-    json_body={"lead_data": {...}},
-    timeout=30,
-    max_attempts=3
+    json={"lead_data": {...}},
 )
-# response: HttpResponse(status_code, body, headers)
 ```
 
-Features:
-- Thread-local `requests.Session` for connection pooling
-- Automatic retry with exponential backoff on 5xx and timeouts
-- Raises `TransientError` (5xx) or `ExternalTimeoutError` (timeout)
-- Per-`max_attempts` Tenacity state caching
+Features (kit-owned):
+- Per-service breaker + retry policy from the kit registry
+- SSRF guard (private-IP block, DNS-pinned resolve, outbound
+  allowlist) before the connect
+- Raises `TransientError` / `ExternalTimeoutError` / kit error
+  family — mapped to envelope responses by the registered DRF
+  handler
+- Audit-event emission via `resilience_kit.audit`
 
 ## SSRF defense-in-depth
 
-`core.utils.http_client.make_http_request` enforces three independent
+`resilience_kit.http_client.AsyncAPIClient` enforces three independent
 layers before a single packet leaves the process. Each layer answers a
-different question; none on its own is enough.
+different question; none on its own is enough. Implementations are
+kit-owned (see [ADR-0004](decisions/0004-outsource-resilience-to-resilience-kit.md));
+the boilerplate consumes them through `AsyncAPIClient`.
 
 | Layer | Question answered | Where |
 |---|---|---|
-| Private-IP guard (DNS-pinned) | "Does this hostname resolve to public IP space, and will the request use the *same* resolution we validated?" | `_resolve_and_validate` + `_pin_dns` in `apps/core/utils/http_client.py` |
-| Outbound allowlist | "Did the deploy operator sanction this destination?" | `_assert_url_allowlisted` keyed on `settings.OUTBOUND_URL_ALLOWLIST` |
-| `trusted=True` opt-out | "Is this URL from an admin-configured trust boundary (e.g. a `Partner` row), so the private-IP question is already answered upstream?" | the `trusted` kwarg to `make_http_request` |
+| Private-IP guard (DNS-pinned) | "Does this hostname resolve to public IP space, and will the request use the *same* resolution we validated?" | `resilience_kit.ssrf.resolve_and_validate` |
+| Outbound allowlist | "Did the deploy operator sanction this destination?" | `resilience_kit.ssrf.assert_allowed_url` keyed on the kit's `RESILIENCE_SSRF__ALLOWED_HOSTS` setting (overlay of Django's `OUTBOUND_URL_ALLOWLIST`) |
+| `trusted=True` opt-out | "Is this URL from an admin-configured trust boundary (e.g. a `Partner` row), so the private-IP question is already answered upstream?" | the `trusted=` kwarg on `AsyncAPIClient.request` |
 
 ### The DNS-pinned guard
 
@@ -567,10 +586,10 @@ to surface configuration drift before deploy.
 ### Circuit Breaker Stats
 
 ```python
-from core.resilience.circuit_breaker.provider import get_registry
+from resilience_kit import registry
 
-# Get stats for all breakers
-stats = get_registry().get_all_stats()
+# Snapshot of every registered breaker's state.
+stats = registry.health_snapshot()
 # {
 #   "partner_api": {
 #     "state": "closed",
