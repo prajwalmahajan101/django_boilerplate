@@ -125,6 +125,22 @@ genuine coverage on the next PR rather than an escape comment.
 - **[decisions/](decisions/)** — Architecture Decision Records (ADRs).
   Numbered, append-only; start with
   [`0000-template.md`](decisions/0000-template.md) when adding one.
+  Current ADRs:
+  - [`0001-fire-and-forget-dispatch.md`](decisions/0001-fire-and-forget-dispatch.md)
+    — why async background work runs through the in-tree
+    fire-and-forget queue.
+  - [`0002-exception-http-registry.md`](decisions/0002-exception-http-registry.md)
+    — typed exceptions + lazy-frozen HTTP status map.
+  - [`0003-ci-as-quality-gate.md`](decisions/0003-ci-as-quality-gate.md)
+    — pre-commit + audit + SBOM run in CI; local and remote share
+    one quality bar.
+  - [`0004-outsource-resilience-to-resilience-kit.md`](decisions/0004-outsource-resilience-to-resilience-kit.md)
+    — why M7+M8 moved circuit-breaker / retry / throttle / SSRF /
+    Fernet to `resilience-kit`.
+  - [`0005-dormant-module-policy.md`](decisions/0005-dormant-module-policy.md)
+    — the two-halves contract (coverage `omit` + AST gate +
+    `# allow-dormant-import:` escape) and how to activate a dormant
+    module.
 
 ## Recommended reading order
 
